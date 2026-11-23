@@ -1,0 +1,56 @@
+import AppKit
+
+// 导出音符事件（给可视化用：音高/位置/时间/力度）
+if let flag = CommandLine.arguments.firstIndex(of: "--export-notes") {
+    let store = Store()
+    let outPath = flag + 1 < CommandLine.arguments.count
+        ? CommandLine.arguments[flag + 1]
+        : "notes.json"
+    let (notes, summary) = SongComposer.compose(store.record)
+    let payload: [String: Any] = [
+        "day": store.record.day,
+        "bpm": summary.bpm,
+        "seconds": summary.seconds,
+        "sessions": summary.sessions,
+        "notes": notes.map { [
+            "t": ($0.start * 1000).rounded() / 1000,
+            "d": ($0.dur * 1000).rounded() / 1000,
+            "m": $0.midi,
+            "a": Double($0.amp),
+            "p": Double($0.pan),
+            "k": String(describing: $0.kind),
+        ] as [String: Any] },
+    ]
+    do {
+        let data = try JSONSerialization.data(withJSONObject: payload,
+                                              options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: URL(fileURLWithPath: outPath))
+        print("notes: \(outPath) (\(notes.count) events)")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("export failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
+// 无界面模式：直接渲染今日之歌（便于自动化验证）
+if let flag = CommandLine.arguments.firstIndex(of: "--render-song") {
+    let store = Store()
+    let outPath = flag + 1 < CommandLine.arguments.count ? CommandLine.arguments[flag + 1] : nil
+    let url = outPath.map { URL(fileURLWithPath: $0) } ?? SongRenderer.defaultURL(for: store.record.day)
+    do {
+        let summary = try SongRenderer.render(store.record, to: url)
+        print("song: \(url.path)")
+        print("bpm=\(summary.bpm) bars=\(summary.bars) seconds=\(summary.seconds) sessions=\(summary.sessions)")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("render failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+}
+
+let app = NSApplication.shared
+let delegate = AppDelegate()
+app.delegate = delegate
+app.setActivationPolicy(.accessory)
+app.run()

@@ -1,0 +1,19 @@
+{
+  "day": "2026-11-23",
+  "bpm": 87.8,
+  "bars": 27,
+  "duration": 74.8,
+  "sessions": 7,
+  "motif": [
+    4,
+    3,
+    4,
+    4,
+    2,
+    3
+  ],
+  "peak_session": 7,
+  "kpm": 99.5,
+  "net_chars": 48,
+  "keystrokes": 398
+}

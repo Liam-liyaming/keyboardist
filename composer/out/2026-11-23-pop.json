@@ -1,0 +1,20 @@
+{
+  "style": "pop",
+  "bpm": 106.1,
+  "bars": 24,
+  "duration": 54.6,
+  "sections": {
+    "intro": 4,
+    "verse": 8,
+    "chorus": 8,
+    "outro": 4
+  },
+  "motif": [
+    4,
+    3,
+    4,
+    4,
+    2,
+    3
+  ]
+}
