@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>冲击波 · 六层原型</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#06080c; overflow:hidden; }
+  body { font-family:-apple-system,"PingFang SC",sans-serif; }
+  #c { width:100vw; height:100vh; display:block; }
+  #tip { position:fixed; left:24px; bottom:16px; font-size:12px; color:#4b5566; pointer-events:none; }
+  #dump { display:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="tip">回车触发 · 1 Aurora · 2 Halo · 3 Frost · 4 Spark</div>
+<div id="dump"></div>
+<script>window.onerror=function(m,u,l){var d=document.getElementById("dump");d.textContent="ERR "+m+" @"+l;};</script>
+<script src="shockwave.js"></script>
+</body>
+</html>
