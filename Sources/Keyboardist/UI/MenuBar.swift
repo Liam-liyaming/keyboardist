@@ -99,6 +99,10 @@ final class MenuBarController: NSObject {
         screenItem.target = self
         menu.addItem(screenItem)
 
+        let update = NSMenuItem(title: "检查更新…", action: #selector(checkUpdates), keyEquivalent: "")
+        update.target = self
+        menu.addItem(update)
+
         menu.addItem(privacy)
 
         let quit = NSMenuItem(title: "退出键盘手", action: #selector(quit), keyEquivalent: "q")
@@ -217,6 +221,52 @@ final class MenuBarController: NSObject {
         alert.addButton(withTitle: "算了")
         if alert.runModal() == .alertFirstButtonReturn {
             ScreenShot.requestPermission()
+        }
+    }
+
+
+    @objc private func checkUpdates() {
+        Task {
+            do {
+                let remote = try await UpdateChecker.fetch()
+                await MainActor.run { self.presentUpdate(remote) }
+            } catch {
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "检查更新失败"
+                    alert.informativeText = error.localizedDescription
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func presentUpdate(_ remote: UpdateChecker.Appcast) {
+        let current = UpdateChecker.currentVersion
+
+        guard UpdateChecker.isNewer(remote.version, than: current) else {
+            let alert = NSAlert()
+            alert.messageText = "已是最新版本"
+            alert.informativeText = "当前 \(current)，远端 \(remote.version)。"
+            alert.runModal()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "有新版本 \(remote.version)"
+        var text = "当前 \(current)。"
+        if let notes = remote.notes, !notes.isEmpty {
+            text += "\n\n\(notes)"
+        }
+        if let date = remote.releasedAt {
+            text += "\n\n发布于 \(date)"
+        }
+        alert.informativeText = text
+        alert.addButton(withTitle: "去下载")
+        alert.addButton(withTitle: "稍后")
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: remote.url) {
+            NSWorkspace.shared.open(url)
         }
     }
 

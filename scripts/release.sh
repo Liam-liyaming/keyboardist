@@ -49,6 +49,23 @@ if [ "${SKIP_DMG:-0}" != "1" ]; then
     echo "→ DMG: $DMG"
 fi
 
+# 更新通道：DMG 进 releases/，appcast.json 给「检查更新」用
+mkdir -p "$ROOT/releases"
+cp "$DMG" "$ROOT/releases/keyboardist-$VERSION.dmg"
+ls -t "$ROOT/releases"/keyboardist-*.dmg 2>/dev/null | tail -n +4 | xargs -r rm -f
+
+NOTES="${2:-$(git -C "$ROOT" log -1 --pretty=%s 2>/dev/null || echo "")}"
+cat > "$ROOT/appcast.json" <<JSON
+{
+  "version": "$VERSION",
+  "build": $BUILD,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-$VERSION.dmg",
+  "notes": "$NOTES",
+  "releasedAt": "$(date +%Y-%m-%d)"
+}
+JSON
+echo "→ appcast.json: $VERSION"
+
 # 代码与二进制对齐
 cd "$ROOT"
 if git rev-parse --git-dir >/dev/null 2>&1; then

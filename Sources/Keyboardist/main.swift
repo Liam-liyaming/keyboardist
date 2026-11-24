@@ -41,6 +41,23 @@ if CommandLine.arguments.contains("--version") {
     exit(0)
 }
 
+// 自检：检查更新（命令行验证用）
+if CommandLine.arguments.contains("--check-update") {
+    let sem = DispatchSemaphore(value: 0)
+    Task {
+        defer { sem.signal() }
+        do {
+            let remote = try await UpdateChecker.fetch()
+            print("local=\(UpdateChecker.currentVersion)  remote=\(remote.version)  newer=\(UpdateChecker.isNewer(remote.version, than: UpdateChecker.currentVersion))")
+            print("url=\(remote.url)")
+        } catch {
+            print("failed: \(error.localizedDescription)")
+        }
+    }
+    sem.wait()
+    exit(0)
+}
+
 // 自检：Metal 着色器能否编译（不需要屏幕录制权限）
 if CommandLine.arguments.contains("--test-shader") {
     guard let device = MTLCreateSystemDefaultDevice() else { print("no metal device"); exit(1) }
