@@ -8,6 +8,7 @@ let haloShaderSource = """
             float4 c0, c1, c2, c3;
             float t, startR, growth, ringW, reduce, pad0, pad1, pad2;
             float push;
+            float alphaScale;
         };
 
         struct VOut { float4 pos [[position]]; };
@@ -44,7 +45,7 @@ let haloShaderSource = """
             float ws = w0 + w1 + w2 + w3 + 1e-4;
             float3 ring = (u.c0.rgb * w0 + u.c1.rgb * w1 + u.c2.rgb * w2 + u.c3.rgb * w3) / ws;
 
-            float alpha = strength * exp(-0.85 * pow(x / 2.0, 2.0)) * 0.42 * (1.0 - 0.35 * u.reduce);
+            float alpha = strength * exp(-0.85 * pow(x / 2.0, 2.0)) * 0.42 * u.alphaScale * (1.0 - 0.35 * u.reduce);
 
             float z = x * 0.75;
             float push = u.push * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
@@ -64,7 +65,7 @@ let haloShaderSource = """
             float3 lit = 1.0 - (1.0 - col) * (1.0 - ring * alpha * 1.5);
 
             // 第二趟：更宽、更淡的同一层光，专门用来消掉「边」
-            float alphaWide = strength * exp(-0.85 * pow(x / 2.6, 2.0)) * 0.16 * (1.0 - 0.35 * u.reduce);
+            float alphaWide = strength * exp(-0.85 * pow(x / 2.6, 2.0)) * 0.16 * u.alphaScale * (1.0 - 0.35 * u.reduce);
             lit = 1.0 - (1.0 - lit) * (1.0 - ring * alphaWide);
 
             // 第 6 层：线条反光。在「弯折后」的位置取样，反光会跟着线走
@@ -96,7 +97,6 @@ final class HaloMetalView: NSView {
     private var texture: MTLTexture?
     private var maskTexture: MTLTexture?
     private var startAt: CFTimeInterval = -1
-    private let duration: CFTimeInterval = 1.15
 
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
 
@@ -116,10 +116,13 @@ final class HaloMetalView: NSView {
         var pad1: Float = 0
         var pad2: Float = 0
         var push: Float = 9.8
+        var alphaScale: Float = 1.0
     }
 
     /// 位移强度：由菜单里的「冲击波强度」决定
     var pushScale: Float = 9.8
+    var alphaScale: Float = 1.0
+    var duration: CFTimeInterval = 1.15
 
     init?(frame: NSRect, frame captured: CapturedFrame) {
         device = MTLCreateSystemDefaultDevice()
@@ -233,6 +236,7 @@ final class HaloMetalView: NSView {
         u.ringW = h * 0.115
         u.reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1 : 0
         u.push = pushScale
+        u.alphaScale = alphaScale
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture

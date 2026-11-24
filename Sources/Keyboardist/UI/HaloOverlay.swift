@@ -41,13 +41,26 @@ final class HaloOverlay {
     private let cooldown: CFTimeInterval = 0.15
     private let easeK: Double = 6.0
 
-    /// 0.45 轻 / 0.7 中 / 1.0 重 —— 存在 UserDefaults，菜单可切
-    static var intensity: Double {
+    /// 三档预设：位移、亮度、时长一起变，才看得出区别
+    struct Preset {
+        let key: String
+        let push: Float        // 位移倍数
+        let alpha: Float       // 亮度倍数
+        let duration: CFTimeInterval
+    }
+
+    static let presets: [Preset] = [
+        Preset(key: "light",  push: 0.55, alpha: 0.88, duration: 1.00),
+        Preset(key: "medium", push: 1.00, alpha: 1.00, duration: 1.15),
+        Preset(key: "heavy",  push: 1.70, alpha: 1.14, duration: 1.35),
+    ]
+
+    static var preset: Preset {
         get {
-            let v = UserDefaults.standard.double(forKey: "haloIntensity")
-            return v == 0 ? 0.7 : v
+            let key = UserDefaults.standard.string(forKey: "haloPreset") ?? "medium"
+            return presets.first { $0.key == key } ?? presets[1]
         }
-        set { UserDefaults.standard.set(newValue, forKey: "haloIntensity") }
+        set { UserDefaults.standard.set(newValue.key, forKey: "haloPreset") }
     }
 
     /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
@@ -91,7 +104,10 @@ final class HaloOverlay {
 
         if let captured, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), frame: captured) {
             HaloOverlay.log("metal path")
-            mv.pushScale = Float(HaloOverlay.intensity * 14)
+            let p = HaloOverlay.preset
+            mv.pushScale = p.push * 11
+            mv.alphaScale = p.alpha
+            mv.duration = p.duration
             mv.start()
             w.contentView = mv
             metalView = mv

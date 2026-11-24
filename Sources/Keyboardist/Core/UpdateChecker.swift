@@ -44,7 +44,13 @@ enum UpdateChecker {
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                if http.statusCode == 404 {
+                    throw CheckError.network("更新源返回 404 —— 仓库可能还是私有的，匿名访问读不到")
+                }
+                throw CheckError.network("HTTP \(http.statusCode)")
+            }
             return try JSONDecoder().decode(Appcast.self, from: data)
         } catch let error as DecodingError {
             throw CheckError.decode(String(describing: error))

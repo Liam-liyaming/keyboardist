@@ -72,10 +72,10 @@ final class MenuBarController: NSObject {
         menu.addItem(songItem)
 
         let haloMenu = NSMenu()
-        for (title, value) in [("轻", 0.45), ("中", 0.7), ("重", 1.0)] {
+        for (title, key) in [("轻", "light"), ("中", "medium"), ("重", "heavy")] {
             let item = NSMenuItem(title: title, action: #selector(setHaloIntensity(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = value
+            item.representedObject = key
             haloMenu.addItem(item)
         }
         let haloRoot = NSMenuItem(title: "冲击波强度", action: nil, keyEquivalent: "")
@@ -179,17 +179,18 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func setHaloIntensity(_ sender: NSMenuItem) {
-        if let value = sender.representedObject as? Double {
-            HaloOverlay.intensity = value
+        if let key = sender.representedObject as? String,
+           let preset = HaloOverlay.presets.first(where: { $0.key == key }) {
+            HaloOverlay.preset = preset
             syncHaloMenu(sender.menu)
         }
     }
 
     private func syncHaloMenu(_ menu: NSMenu?) {
-        let current = HaloOverlay.intensity
+        let current = HaloOverlay.preset.key
         menu?.items.forEach { item in
-            if let v = item.representedObject as? Double {
-                item.state = abs(v - current) < 0.01 ? .on : .off
+            if let key = item.representedObject as? String {
+                item.state = key == current ? .on : .off
             }
         }
     }
