@@ -102,7 +102,8 @@ function makeTint(src, color) {
 /* ---------------- 冲击波 ---------------- */
 
 function fire(now) {
-  wave = { born: now, life: 1.25, cx: W * 0.5, cy: H * 0.56 };
+  // 从键盘出发：屏幕底边中点，向上扩散成半圆
+  wave = { born: now, life: 1.25, cx: W * 0.5, cy: H + 24 };
 }
 
 function drawWave(now) {
@@ -110,7 +111,7 @@ function drawWave(now) {
   const t = (now - wave.born) / wave.life;
   if (t > 1) { wave = null; return; }
 
-  const maxR = Math.hypot(Math.max(wave.cx, W - wave.cx), Math.max(wave.cy, H - wave.cy));
+  const maxR = Math.hypot(Math.max(wave.cx, W - wave.cx), Math.max(0, H - wave.cy) + H);
   // 扩散曲线：k = 1 - e^(-3.4t)，归一化后「先快后慢」地鼓起来，
   // 而不是匀速推出去 —— 对应设计稿里那条逼近 top 的曲线
   const easeOut = (x) => (1 - Math.exp(-2.2 * x)) / (1 - Math.exp(-2.2));
@@ -180,8 +181,7 @@ function drawWave(now) {
   ctx.restore();
 
   // ---- 6 边线反光：波前接近边缘时窗框提亮 ----
-  const edgeDist = Math.min(W, H) * 0.5;
-  const reach = Math.max(0, 1 - Math.abs(R - edgeDist) / (edgeDist * 0.6));
+  const reach = Math.max(0, 1 - Math.abs(R - (H + 24)) / (H * 0.55));
   if (reach > 0.01) {
     ctx.strokeStyle = hexA(palette.colors[0], 0.35 * reach * (1 - t));
     ctx.lineWidth = 2;
@@ -227,7 +227,7 @@ const SHOT = params.has('t') ? parseFloat(params.get('t')) : null;
 if (SHOT !== null) {
   resize();
   const born = 0.2;
-  wave = { born, life: 1.25, cx: W * 0.5, cy: H * 0.56 };
+  wave = { born, life: 1.25, cx: W * 0.5, cy: H + 24 };
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(base, 0, 0, W, H);
   drawWave(SHOT);
