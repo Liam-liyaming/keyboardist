@@ -105,7 +105,7 @@ function makeTint(src, color) {
 
 function fire(now) {
   // 从键盘出发：屏幕底边中点，向上扩散成半圆
-  wave = { born: now, life: 1.25, cx: W * 0.5, cy: H + 24 };
+  wave = { born: now, life: 2.2, cx: W * 0.5, cy: H * 1.97 };
 }
 
 function drawWave(now) {
@@ -117,11 +117,15 @@ function drawWave(now) {
   const maxR = Math.hypot(Math.max(wave.cx, W - wave.cx), Math.max(0, H - wave.cy) + H);
   // 扩散曲线：k = 1 - e^(-3.4t)，归一化后「先快后慢」地鼓起来，
   // 而不是匀速推出去 —— 对应设计稿里那条逼近 top 的曲线
-  const easeOut = (x) => (1 - Math.exp(-1.8 * x)) / (1 - Math.exp(-1.8));
-  const R = 40 + easeOut(t) * maxR * 1.05;
+  // skill 原式：R = 起点 + 增幅 * (1 - 2^(-9t)) / (1 - 2^(-9))
+  const ease = (x) => (1 - Math.pow(2, -4 * x)) / (1 - Math.pow(2, -4));
+  const startR = H * 0.97;
+  const growth = H * 1.12;
+  const R = startR + ease(t) * growth;
   const sigma = 34 + t * 40;
   const amp = 17 * Math.pow(1 - t, 2.2);          // 位移量随时间衰减
   const palette = PALETTES[paletteKey];
+  const rgb = palette.colors.map(hexToRgb);
 
   // ---- 2/5 透镜扭曲（默认关闭）----
   if (DISTORTION) {
@@ -171,52 +175,39 @@ function drawWave(now) {
 
   }
 
-  // ---- 4 色环：一条带，不是四道线 ----
-  // 用「粗描边 + 径向渐变」实现：渐变按半径着色，线宽就是带的宽度，
-  // 两端 alpha 收到 0，于是没有硬边；颜色在带内平滑过渡。
-  const paint = (R, width, alpha) => {
-    const rIn = Math.max(2, R - width / 2);
-    const rOut = R + width / 2;
-    const g = ctx.createRadialGradient(wave.cx, wave.cy, rIn, wave.cx, wave.cy, rOut);
-    const c = palette.colors;
-    g.addColorStop(0.00, hexA(c[0], 0));
-    g.addColorStop(0.22, hexA(c[0], alpha * 0.55));
-    g.addColorStop(0.44, hexA(c[1], alpha * 0.62));
-    g.addColorStop(0.66, hexA(c[2], alpha * 0.55));
-    g.addColorStop(0.86, hexA(c[3], alpha * 0.40));
-    g.addColorStop(1.00, hexA(c[3], 0));
+  // ---- 4 色环：按 skill《冲击波光环》的公式实现 ----
+  //   x = (dist - R) / 110
+  //   第 i 环中心 i-1.5，高斯权重 exp(-((x-c)/0.8)^2)，四色加权平均
+  //   alpha = strength * exp(-1.1 * (x/2)^2)
+  const RING_W = H * 0.095;   // skill 的 110px 是按 ~800px 页面设计的，按屏高缩放
+  const strength = Math.min(1, t / 0.03) * (1 - Math.pow(t, 2.2));
+  if (strength > 0.002) {
+    const stops = 88;
+    const span = 1.8;                     // 视野宽度（以环宽为单位）
+    const rIn = Math.max(1, R - span * RING_W);
+    const rOut = R + span * RING_W;
+    const grad = ctx.createRadialGradient(wave.cx, wave.cy, rIn, wave.cx, wave.cy, rOut);
 
-    // 填充一个圆环（外圈 + 内圈反向），而不是描边：
-    // 描边 + lighter 会让路径每一段反复叠加，出现同心条纹
-    const segs = 160;
-    const phase = wave.born * 6.0;
-    const pts = (r, reverse) => {
-      for (let i = 0; i <= segs; i++) {
-        const idx = reverse ? segs - i : i;
-        const th = (idx / segs) * Math.PI * 2;
-        const wob = Math.sin(th * 3 + phase) * 1.8 + Math.sin(th * 7 - phase * 1.7) * 0.9;
-        const rr = r + wob;
-        const x = wave.cx + Math.cos(th) * rr * 1.15;
-        const y = wave.cy + Math.sin(th) * rr;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    for (let i = 0; i <= stops; i++) {
+      const x = -span + (2 * span) * (i / stops);
+      let r = 0, g = 0, b = 0, sum = 0;
+      for (let k = 0; k < 4; k++) {
+        const wt = Math.exp(-Math.pow((x - (k - 1.5)) / 0.8, 2));
+        const c = rgb[k];
+        r += c[0] * wt; g += c[1] * wt; b += c[2] * wt; sum += wt;
       }
-    };
+      let alpha = strength * Math.exp(-1.1 * Math.pow(x / 2, 2)) * 0.30;
+      if (i === 0 || i === stops) alpha = 0;   // 两端归零，否则整屏被染一层
+      grad.addColorStop(i / stops,
+        `rgba(${Math.round(r / sum)},${Math.round(g / sum)},${Math.round(b / sum)},${alpha})`);
+    }
 
-    ctx.beginPath();
-    pts(rOut, false);
-    ctx.closePath();
-    pts(rIn, true);
-    ctx.closePath();
-    ctx.fillStyle = g;
-    ctx.fill('evenodd');
-  };
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const fade = Math.pow(1 - t, 1.9);
-  paint(R, 26, 0.75 * fade);          // 主带：一条，边缘自然掉到 0
-  paint(R, 150, 0.07 * fade);
-  ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 
   // ---- 起手闪光：头 180ms 在原点爆一下，给「按下去了」的重量 ----
   const flashT = (now - wave.born) / 0.18;
@@ -292,7 +283,7 @@ const SHOT = params.has('t') ? parseFloat(params.get('t')) : null;
 if (SHOT !== null) {
   resize();
   const born = 0;
-  wave = { born, life: 1.25, cx: W * 0.5, cy: H + 24 };
+  wave = { born, life: 2.2, cx: W * 0.5, cy: H * 1.97 };
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(base, 0, 0, W, H);
   drawWave(SHOT);

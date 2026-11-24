@@ -8,3 +8,4 @@ __pycache__/
 composer/out/*.wav
 composer/out/swift-ambient.m4a
 composer/out/swift-ambient-v2.m4a
+skills/
