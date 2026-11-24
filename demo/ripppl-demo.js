@@ -21,7 +21,7 @@ HTMLCanvasElement.prototype.getContext = function (type, attrs) {
 
 const params = new URLSearchParams(location.search);
 const SHOT = params.has('shot') ? parseInt(params.get('shot'), 10) : null;
-const PRESET = params.get('preset') || 'balanced';
+const PRESET = params.get('preset') || 'dramatic';
 
 // Aurora 四色换算到 OKLCH（近似值）
 const AURORA = {
@@ -45,7 +45,7 @@ const PRESETS = {
     shimmerGlowColor: AURORA.blue,
   },
   dramatic: {
-    amplitude: 3.4, frequency: 0.010, speed: 1050, damping: 0.035, decay: 1.2,
+    amplitude: 5.0, frequency: 0.008, speed: 1050, damping: 0.035, decay: 1.2,
     duration: 1500, chromatic: true, chromaticIntensity: 0.5,
     shimmer: AURORA.pink, shimmerWidth: 2.0, shimmerDuration: 1100,
     shimmerGlowColor: AURORA.violet,
@@ -68,10 +68,11 @@ function fire() {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); fire(); }
+  if (e.key === 'Enter') { e.preventDefault(); fire(); setTimeout(showAudit, 320); }
   if (e.key === ' ') { e.preventDefault(); fire(); }
 });
 
+document.getElementById('audit').addEventListener('click', showAudit);
 document.getElementById('fire').addEventListener('click', (e) => {
   const r = app.getBoundingClientRect();
   handle.trigger({
@@ -79,6 +80,41 @@ document.getElementById('fire').addEventListener('click', (e) => {
     y: (e.clientY - r.top) / r.height,
   });
 });
+
+// ---- 自检横幅：触发后 320ms 采样覆盖层，判断到底有没有渲染 ----
+const banner = document.getElementById('banner');
+function audit() {
+  const c = document.querySelector('canvas');
+  if (!c) return { ok: false, why: '没有 canvas（脚本没加载？）' };
+  const gl = c.getContext('webgl2') || c.getContext('webgl');
+  let nz = 0;
+  try {
+    const t = document.createElement('canvas');
+    t.width = c.width; t.height = c.height;
+    const g = t.getContext('2d');
+    g.drawImage(c, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] + d[i + 1] + d[i + 2] > 6) nz++;
+    }
+  } catch (err) {
+    return { ok: false, why: '读取画布失败：' + err.message };
+  }
+  return {
+    ok: nz > 200,
+    why: nz > 200
+      ? `渲染正常（${nz} 个非空像素）`
+      : `画布全空（${nz} 像素）→ 快照纹理没生成，ripppl 在你这个浏览器里没工作`,
+  };
+}
+
+function showAudit() {
+  const r = audit();
+  banner.style.display = 'block';
+  banner.textContent = (r.ok ? '✅ ' : '❌ ') + r.why;
+  banner.style.borderColor = r.ok ? 'rgba(94,234,232,.45)' : 'rgba(255,96,96,.5)';
+  banner.style.color = r.ok ? '#9ff0ee' : '#ffb4b4';
+}
 
 // 局部改参数：1/2/3 切预设
 const keys = { '1': 'subtle', '2': 'balanced', '3': 'dramatic' };
