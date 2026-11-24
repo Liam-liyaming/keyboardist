@@ -16,6 +16,7 @@ final class HaloMetalView: NSView {
     private var queue: MTLCommandQueue?
     private var pipeline: MTLRenderPipelineState?
     private var texture: MTLTexture?
+    private var maskTexture: MTLTexture?
     private var startAt: CFTimeInterval = -1
     private let duration: CFTimeInterval = 1.15
 
@@ -38,7 +39,7 @@ final class HaloMetalView: NSView {
         var pad2: Float = 0
     }
 
-    init?(frame: NSRect, image: CGImage) {
+    init?(frame: NSRect, frame captured: CapturedFrame) {
         device = MTLCreateSystemDefaultDevice()
         guard let device else { return nil }
         super.init(frame: frame)
@@ -55,7 +56,8 @@ final class HaloMetalView: NSView {
 
         queue = device.makeCommandQueue()
         buildPipeline()
-        loadTexture(image)
+        loadTexture(captured.image)
+        loadMask(captured.mask)
 
         // 着色器编译失败就不要返回这个视图，让调用方退回色环版
         if pipeline == nil || texture == nil { return nil }
@@ -95,7 +97,8 @@ final class HaloMetalView: NSView {
 
         fragment float4 f_main(VOut in [[stage_in]],
                                constant U &u [[buffer(0)]],
-                               texture2d<float> tex [[texture(0)]]) {
+                               texture2d<float> tex [[texture(0)]],
+                               texture2d<float> lmask [[texture(1)]]) {
             constexpr sampler smp(filter::linear, address::clamp_to_edge);
 
             float2 px = in.pos.xy;
@@ -133,6 +136,12 @@ final class HaloMetalView: NSView {
             col.b = tex.sample(smp, uv - offset * 0.92).b;
 
             float3 lit = 1.0 - (1.0 - col) * (1.0 - ring * alpha * 1.5);
+
+            // 第 6 层：线条反光。在「弯折后」的位置取样，反光会跟着线走
+            float gm = lmask.sample(smp, uv - offset).r;
+            float glint = strength * exp(-1.4 * pow(x / 2.0, 2.0)) * 0.16;
+            lit += mix(ring, float3(1.0), 0.2) * gm * glint;
+
             return float4(lit, 1.0);
         }
         """
@@ -145,9 +154,24 @@ final class HaloMetalView: NSView {
             desc.colorAttachments[0].pixelFormat = .bgra8Unorm
             pipeline = try device.makeRenderPipelineState(descriptor: desc)
         } catch {
-            NSLog("HaloMetal pipeline failed: \(error)")
+            HaloOverlay.log("pipeline failed: \(error)")
             pipeline = nil
         }
+    }
+
+    private func loadMask(_ mask: LineMask.Mask?) {
+        guard let device, let mask else { return }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm,
+                                                           width: mask.width,
+                                                           height: mask.height,
+                                                           mipmapped: false)
+        desc.usage = .shaderRead
+        guard let t = device.makeTexture(descriptor: desc) else { return }
+        t.replace(region: MTLRegionMake2D(0, 0, mask.width, mask.height),
+                  mipmapLevel: 0,
+                  withBytes: mask.pixels,
+                  bytesPerRow: mask.width)
+        maskTexture = t
     }
 
     private func loadTexture(_ image: CGImage) {
@@ -208,6 +232,7 @@ final class HaloMetalView: NSView {
 
         enc.setRenderPipelineState(pipeline)
         enc.setFragmentTexture(texture, index: 0)
+        enc.setFragmentTexture(maskTexture, index: 1)
         enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()

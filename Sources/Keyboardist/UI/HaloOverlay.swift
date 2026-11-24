@@ -56,12 +56,12 @@ final class HaloOverlay {
         Task {
             let image = await ScreenShot.capture(screen: screen)
             await MainActor.run {
-                self.present(screen: screen, image: image)
+                self.present(screen: screen, frame: image)
             }
         }
     }
 
-    private func present(screen: NSScreen, image: CGImage?) {
+    private func present(screen: NSScreen, frame captured: CapturedFrame?) {
         teardown()
 
         let frame = screen.frame
@@ -78,9 +78,9 @@ final class HaloOverlay {
         w.level = .screenSaver
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 
-        HaloOverlay.log("captured=\(image != nil)  size=\(image.map { "\($0.width)x\($0.height)" } ?? "-")")
+        HaloOverlay.log("captured=\(captured != nil)  size=\(captured.map { "\($0.image.width)x\($0.image.height)" } ?? "-")  mask=\(captured?.mask != nil)")
 
-        if let image, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), image: image) {
+        if let captured, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), frame: captured) {
             HaloOverlay.log("metal path")
             mv.start()
             w.contentView = mv

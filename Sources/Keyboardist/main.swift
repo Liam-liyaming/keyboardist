@@ -41,17 +41,26 @@ if CommandLine.arguments.contains("--version") {
     exit(0)
 }
 
-// 自检：单独放一次冲击波，2 秒后退出（用来验证窗口是否真的出现）
-if CommandLine.arguments.contains("--test-halo") {
-    // 单实例：已经有同名 App 在跑就直接激活它并退出
-let bundleID = Bundle.main.bundleIdentifier ?? "com.liyaming.keyboardist"
-let me = ProcessInfo.processInfo.processIdentifier
-if let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-    .first(where: { $0.processIdentifier != me }) {
-    other.activate(options: [.activateIgnoringOtherApps])
+// 自检：线条掩膜的方向是否正确（画在靠近顶部 → 掩膜里也该在靠近顶部）
+if CommandLine.arguments.contains("--test-mask") {
+    let w = 400, h = 200
+    let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    ctx.setFillColor(CGColor(red: 0.06, green: 0.06, blue: 0.06, alpha: 1))
+    ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+    ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    ctx.fill(CGRect(x: 40, y: 180, width: 320, height: 2))   // CG 左下原点：y=180 靠上
+    if let img = ctx.makeImage(), let m = LineMask.make(from: img) {
+        var rows: [Int] = []
+        for y in 0..<m.height where m.pixels[y * m.width + m.width / 2] > 0 { rows.append(y) }
+        print("mask \(m.width)x\(m.height)  marked rows=\(rows.prefix(8))  (期望 ~10，靠近顶部)")
+    }
     exit(0)
 }
 
+// 自检：单独放一次冲击波，2 秒后退出（用来验证窗口是否真的出现）
+if CommandLine.arguments.contains("--test-halo") {
 let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     let halo = HaloOverlay()
