@@ -275,16 +275,15 @@ window.addEventListener('keydown', (e) => {
   if (e.isComposing || composing) return;          // 输入法回车＝上屏，放行
   if (e.repeat) return;                            // 按住不放不连发
   if (e.metaKey || e.ctrlKey || e.altKey) return;  // ⌘↩ 这类组合键交给页面自己处理
-  if (e.key === 'Enter' || e.key === ' ') {
+  if (e.key === 'Enter') {
     e.preventDefault();
-    tryTrigger(e.key === 'Enter' ? '回车' : '空格');
+    tryTrigger('回车');
   }
 });
 
 window.addEventListener('compositionstart', () => { composing = true; });
 window.addEventListener('compositionend', () => { composing = false; });
 
-window.addEventListener('pointerdown', () => tryTrigger('点击'));
 
 document.addEventListener('visibilitychange', () => {
   // 切走再回来不要继续跑一半：直接收干净
