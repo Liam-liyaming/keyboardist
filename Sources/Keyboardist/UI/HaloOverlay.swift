@@ -13,34 +13,36 @@ import AppKit
 ///   R = startR + growth * (1 - 2^(-k t)) / (1 - 2^(-k))
 final class HaloOverlay {
     private var window: NSWindow?
-    private var view: HaloView?
+    private var ringView: HaloView?
+    private var metalView: HaloMetalView?
     private var timer: Timer?
 
-    private var startAt: CFTimeInterval = -1
     private var lastEnd: CFTimeInterval = -1
 
     private let duration: CFTimeInterval = 1.15
     private let cooldown: CFTimeInterval = 0.15
-    private let easeK: Double = 6.0          // 9 = 规格原值，App 里略缓
+    private let easeK: Double = 6.0
 
-    /// 只在动画期间显示窗口，跑完立刻隐藏，避免常驻耗电
+    /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
+    /// 抓帧失败（没有屏幕录制权限）就退回只有色环的降级版。
     func trigger() {
         let now = CACurrentMediaTime()
         guard now > lastEnd + cooldown else { return }
+        guard let screen = ActiveWindow.glowTarget(height: 0)?.screen ?? NSScreen.main else { return }
 
-        startAt = now
-        lastEnd = now + duration
+        // 抓帧本身要几十毫秒，把闸门的结束时间往后推
+        lastEnd = now + duration + 0.4
 
-        ensureWindow()
-        window?.orderFrontRegardless()
-        startTimer()
+        Task {
+            let image = await ScreenShot.capture(screen: screen)
+            await MainActor.run {
+                self.present(screen: screen, image: image)
+            }
+        }
     }
 
-    // MARK: - 窗口
-
-    private func ensureWindow() {
-        guard window == nil else { return }
-        guard let screen = ActiveWindow.glowTarget(height: 0)?.screen ?? NSScreen.main else { return }
+    private func present(screen: NSScreen, image: CGImage?) {
+        teardown()
 
         let frame = screen.frame
         let w = NSWindow(contentRect: frame,
@@ -56,11 +58,21 @@ final class HaloOverlay {
         w.level = .screenSaver
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 
-        let v = HaloView(frame: NSRect(origin: .zero, size: frame.size))
-        w.contentView = v
+        if let image, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), image: image) {
+            mv.start()
+            w.contentView = mv
+            metalView = mv
+        } else {
+            let v = HaloView(frame: NSRect(origin: .zero, size: frame.size))
+            v.easeK = easeK
+            v.progress = 0
+            w.contentView = v
+            ringView = v
+        }
 
         window = w
-        view = v
+        w.orderFrontRegardless()
+        startTimer()
     }
 
     private func startTimer() {
@@ -73,20 +85,29 @@ final class HaloOverlay {
     }
 
     private func tick() {
-        let now = CACurrentMediaTime()
-        let t = (now - startAt) / duration
-
-        if t >= 1 {
-            timer?.invalidate()
-            timer = nil
-            view?.progress = 1
-            view?.needsDisplay = true
-            window?.orderOut(nil)
+        if let mv = metalView {
+            mv.renderFrame()
+            if mv.isFinished { teardown() }
             return
         }
-        view?.easeK = easeK
-        view?.progress = t
-        view?.needsDisplay = true
+        if let rv = ringView {
+            let t = CACurrentMediaTime()
+            // 降级版没有独立的起始时间，用闸门的结束时间倒推
+            let elapsed = duration - (lastEnd - 0.4 - t)
+            let progress = min(1, max(0, elapsed / duration))
+            rv.progress = progress
+            rv.needsDisplay = true
+            if progress >= 1 { teardown() }
+        }
+    }
+
+    private func teardown() {
+        timer?.invalidate()
+        timer = nil
+        window?.orderOut(nil)
+        window = nil
+        ringView = nil
+        metalView = nil
     }
 }
 

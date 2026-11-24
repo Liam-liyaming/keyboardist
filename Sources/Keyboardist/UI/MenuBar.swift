@@ -11,6 +11,7 @@ final class MenuBarController: NSObject {
     private var sessionItem: NSMenuItem!
     private var appItem: NSMenuItem!
     private var songItem: NSMenuItem!
+    private var screenItem: NSMenuItem!
     private var activeApp: String = "-"
     private var glowItem: NSMenuItem!
     private var pauseItem: NSMenuItem!
@@ -75,6 +76,10 @@ final class MenuBarController: NSObject {
 
         let privacy = NSMenuItem(title: "隐私说明…", action: #selector(showPrivacy), keyEquivalent: "")
         privacy.target = self
+        screenItem = NSMenuItem(title: "屏幕录制权限…", action: #selector(screenPermission), keyEquivalent: "")
+        screenItem.target = self
+        menu.addItem(screenItem)
+
         menu.addItem(privacy)
 
         let quit = NSMenuItem(title: "退出键盘手", action: #selector(quit), keyEquivalent: "q")
@@ -158,6 +163,26 @@ final class MenuBarController: NSObject {
     @objc private func togglePause() {
         engine.isPaused.toggle()
         refresh()
+    }
+
+
+    @objc private func screenPermission() {
+        if ScreenShot.hasPermission() {
+            let alert = NSAlert()
+            alert.messageText = "屏幕录制权限已开启"
+            alert.informativeText = "回车冲击波会抓取一帧屏幕来做透镜扭曲。画面只在本机内存里用一次，用完立即丢弃。"
+            alert.runModal()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "开启屏幕录制权限"
+        alert.informativeText = "回车冲击波需要抓取一帧屏幕，才能做出「文字被推开、边缘色散」的效果。没有这个权限也能用，只是会降级成纯发光色环。\n\n数据不出本机：抓到的画面只用于这一次动画，用完立刻丢弃，不写盘、不上传。"
+        alert.addButton(withTitle: "去开启")
+        alert.addButton(withTitle: "算了")
+        if alert.runModal() == .alertFirstButtonReturn {
+            ScreenShot.requestPermission()
+        }
     }
 
     @objc private func showPrivacy() {
