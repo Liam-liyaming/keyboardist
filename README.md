@@ -109,6 +109,37 @@ codesign -d -r- "dist/键盘手.app"
 `composer/out/visualizer.html`：用今天真实生成的音符事件驱动，空格播放/暂停，1/2/3 切换三种模式
 （光河 / 声谱 / 呼吸）。调研与设计依据见 `docs/研究-音乐可视化.md`。
 
+## 回车冲击波
+
+按回车时，一道四色光环从**回车键那一列**（屏幕横向 0.835 处）的底边升起，经过的地方页面被推开、带轻微色散。
+
+| 层 | 实现 |
+|---|---|
+| 页面快照 | ScreenCaptureKit，只在按回车那一瞬间抓一帧 |
+| 透镜扭曲 | Metal：`push = 14 × 2.33 × z × e^(−z²)`，`z = x × 0.75` |
+| 通道分离 | 红 1.08 / 蓝 0.92 |
+| 四环 | 高斯权重混合 Aurora 四色 |
+| 边缘折射 | 56px 淡出 + 60px bevel |
+| 边线反光 | 未实现 |
+
+**触发闸门**：上一次没跑完 / 150ms 冷却 / 按住不放 / 输入法组合中 / 带修饰键 / 页面不可见，六种情况都不触发。
+
+**权限**：需要屏幕录制。没有也能用，会降级成纯发光色环。抓到的画面只在本机内存里用一次，不写盘、不上传。
+
+诊断日志：`~/Library/Application Support/Keyboardist/halo.log`
+
+## 版本管理
+
+```bash
+./scripts/release.sh 0.4.3   # 升版本 → 构建 → 归档 → DMG → git tag
+./scripts/install.sh         # 装最新版到 /Applications 并重启
+./scripts/install.sh 0.4.0   # 回滚
+```
+
+- `dist/versions/键盘手-<ver>.app`：每个版本留一份
+- `/Applications/键盘手.app`：只留一个安装位（多个副本会让 TCC 出现多条同名权限条目）
+- `git tag v<ver>`：代码与二进制对得上
+
 ## 数据格式
 
 `~/Library/Application Support/Keyboardist/days/YYYY-MM-DD.json`
