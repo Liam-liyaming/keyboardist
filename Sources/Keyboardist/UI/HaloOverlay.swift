@@ -184,14 +184,14 @@ final class HaloView: NSView {
             var r = 0.0, g = 0.0, b = 0.0, sum = 0.0
             for k in 0..<4 {
                 let c = Double(k) - 1.5
-                let w = exp(-pow((x - c) / 0.8, 2))
+                let w = exp(-pow((x - c) / 0.95, 2))
                 r += palette[k].0 * w
                 g += palette[k].1 * w
                 b += palette[k].2 * w
                 sum += w
             }
             sum = max(sum, 1e-5)
-            var alpha = strength * exp(-1.1 * pow(x / 2, 2)) * 0.5
+            var alpha = strength * exp(-0.85 * pow(x / 2, 2)) * 0.46
             if i == 0 || i == stops { alpha = 0 }   // 两端归零，否则整屏泛色
             colors.append(CGColor(red: r / sum / 255, green: g / sum / 255, blue: b / sum / 255, alpha: alpha))
             locations.append(CGFloat(i) / CGFloat(stops))

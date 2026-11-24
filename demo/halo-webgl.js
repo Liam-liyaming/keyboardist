@@ -114,13 +114,13 @@ void main() {
   float x = (d - R) / u_ringW;
 
   // ---- 4 四环：高斯权重 ----
-  float w0 = exp(-pow((x + 1.5) / 0.8, 2.0));
-  float w1 = exp(-pow((x + 0.5) / 0.8, 2.0));
-  float w2 = exp(-pow((x - 0.5) / 0.8, 2.0));
-  float w3 = exp(-pow((x - 1.5) / 0.8, 2.0));
+  float w0 = exp(-pow((x + 1.5) / 0.95, 2.0));
+  float w1 = exp(-pow((x + 0.5) / 0.95, 2.0));
+  float w2 = exp(-pow((x - 0.5) / 0.95, 2.0));
+  float w3 = exp(-pow((x - 1.5) / 0.95, 2.0));
   float ws = w0 + w1 + w2 + w3 + 1e-4;
   vec3 ring = (u_c0 * w0 + u_c1 * w1 + u_c2 * w2 + u_c3 * w3) / ws;
-  float alpha = strength * exp(-1.1 * pow(x / 2.0, 2.0)) * 0.45 * (1.0 - 0.35 * u_reduce);
+  float alpha = strength * exp(-0.85 * pow(x / 2.0, 2.0)) * 0.42 * (1.0 - 0.35 * u_reduce);
 
   // ---- 2 透镜：整片一起弯，不逐环 ----
   float z = x * 0.75;
