@@ -1,3 +1,81 @@
+let haloShaderSource = """
+        #include <metal_stdlib>
+        using namespace metal;
+
+        struct U {
+            float2 res;
+            float2 center;
+            float4 c0, c1, c2, c3;
+            float t, startR, growth, ringW, reduce, pad0, pad1, pad2;
+            float push;
+        };
+
+        struct VOut { float4 pos [[position]]; };
+
+        vertex VOut v_main(uint vid [[vertex_id]]) {
+            float2 p[3] = { float2(-1.0, -1.0), float2(3.0, -1.0), float2(-1.0, 3.0) };
+            VOut o; o.pos = float4(p[vid], 0.0, 1.0); return o;
+        }
+
+        float ease(float t, float k) {
+            return (1.0 - pow(2.0, -k * t)) / (1.0 - pow(2.0, -k));
+        }
+
+        fragment float4 f_main(VOut in [[stage_in]],
+                               constant U &u [[buffer(0)]],
+                               texture2d<float> tex [[texture(0)]],
+                               texture2d<float> lmask [[texture(1)]]) {
+            constexpr sampler smp(filter::linear, address::clamp_to_edge);
+
+            float2 px = in.pos.xy;
+            float2 uv = px / u.res;
+            float2 p = px - u.center;
+            float d = length(p);
+
+            float t = u.t;
+            float R = u.startR + u.growth * ease(t, 6.0);
+            float strength = min(1.0, t / 0.03) * (1.0 - pow(t, 2.2));
+            float x = (d - R) / u.ringW;
+
+            float w0 = exp(-pow((x + 1.5) / 0.95, 2.0));
+            float w1 = exp(-pow((x + 0.5) / 0.95, 2.0));
+            float w2 = exp(-pow((x - 0.5) / 0.95, 2.0));
+            float w3 = exp(-pow((x - 1.5) / 0.95, 2.0));
+            float ws = w0 + w1 + w2 + w3 + 1e-4;
+            float3 ring = (u.c0.rgb * w0 + u.c1.rgb * w1 + u.c2.rgb * w2 + u.c3.rgb * w3) / ws;
+
+            float alpha = strength * exp(-0.85 * pow(x / 2.0, 2.0)) * 0.42 * (1.0 - 0.35 * u.reduce);
+
+            float z = x * 0.75;
+            float push = u.push * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
+            float2 dir = d > 0.5 ? normalize(p) : float2(0.0);
+
+            float edge = min(min(px.x, u.res.x - px.x), min(px.y, u.res.y - px.y));
+            float lensGain = smoothstep(0.0, 56.0, edge);
+            float bevel = 22.0 * pow(1.0 - clamp(edge / 60.0, 0.0, 1.0), 2.0) * strength;
+
+            float2 offset = (dir * push * lensGain - dir * bevel) / u.res;
+
+            float3 col;
+            col.r = tex.sample(smp, uv - offset * 1.08).r;
+            col.g = tex.sample(smp, uv - offset).g;
+            col.b = tex.sample(smp, uv - offset * 0.92).b;
+
+            float3 lit = 1.0 - (1.0 - col) * (1.0 - ring * alpha * 1.5);
+
+            // 第二趟：更宽、更淡的同一层光，专门用来消掉「边」
+            float alphaWide = strength * exp(-0.85 * pow(x / 2.6, 2.0)) * 0.16 * (1.0 - 0.35 * u.reduce);
+            lit = 1.0 - (1.0 - lit) * (1.0 - ring * alphaWide);
+
+            // 第 6 层：线条反光。在「弯折后」的位置取样，反光会跟着线走
+            float gm = lmask.sample(smp, uv - offset).r;
+            float glint = strength * exp(-1.4 * pow(x / 2.0, 2.0)) * 0.16;
+            lit += mix(ring, float3(1.0), 0.2) * gm * glint;
+
+            return float4(lit, 1.0);
+        }
+"""
+
 import AppKit
 import Metal
 import MetalKit
@@ -77,78 +155,8 @@ final class HaloMetalView: NSView {
     private func buildPipeline() {
         guard let device else { return }
 
-        let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+        let source = haloShaderSource
 
-        struct U {
-            float2 res;
-            float2 center;
-            float4 c0, c1, c2, c3;
-            float t, startR, growth, ringW, reduce, pad0, pad1, pad2;
-        };
-
-        struct VOut { float4 pos [[position]]; };
-
-        vertex VOut v_main(uint vid [[vertex_id]]) {
-            float2 p[3] = { float2(-1.0, -1.0), float2(3.0, -1.0), float2(-1.0, 3.0) };
-            VOut o; o.pos = float4(p[vid], 0.0, 1.0); return o;
-        }
-
-        float ease(float t, float k) {
-            return (1.0 - pow(2.0, -k * t)) / (1.0 - pow(2.0, -k));
-        }
-
-        fragment float4 f_main(VOut in [[stage_in]],
-                               constant U &u [[buffer(0)]],
-                               texture2d<float> tex [[texture(0)]],
-                               texture2d<float> lmask [[texture(1)]]) {
-            constexpr sampler smp(filter::linear, address::clamp_to_edge);
-
-            float2 px = in.pos.xy;
-            float2 uv = px / u.res;
-            float2 p = px - u.center;
-            float d = length(p);
-
-            float t = u.t;
-            float R = u.startR + u.growth * ease(t, 6.0);
-            float strength = min(1.0, t / 0.03) * (1.0 - pow(t, 2.2));
-            float x = (d - R) / u.ringW;
-
-            float w0 = exp(-pow((x + 1.5) / 0.95, 2.0));
-            float w1 = exp(-pow((x + 0.5) / 0.95, 2.0));
-            float w2 = exp(-pow((x - 0.5) / 0.95, 2.0));
-            float w3 = exp(-pow((x - 1.5) / 0.95, 2.0));
-            float ws = w0 + w1 + w2 + w3 + 1e-4;
-            float3 ring = (u.c0.rgb * w0 + u.c1.rgb * w1 + u.c2.rgb * w2 + u.c3.rgb * w3) / ws;
-
-            float alpha = strength * exp(-0.85 * pow(x / 2.0, 2.0)) * 0.42 * (1.0 - 0.35 * u.reduce);
-
-            float z = x * 0.75;
-            float push = u_push * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
-            float2 dir = d > 0.5 ? normalize(p) : float2(0.0);
-
-            float edge = min(min(px.x, u.res.x - px.x), min(px.y, u.res.y - px.y));
-            float lensGain = smoothstep(0.0, 56.0, edge);
-            float bevel = 22.0 * pow(1.0 - clamp(edge / 60.0, 0.0, 1.0), 2.0) * strength;
-
-            float2 offset = (dir * push * lensGain - dir * bevel) / u.res;
-
-            float3 col;
-            col.r = tex.sample(smp, uv - offset * 1.08).r;
-            col.g = tex.sample(smp, uv - offset).g;
-            col.b = tex.sample(smp, uv - offset * 0.92).b;
-
-            float3 lit = 1.0 - (1.0 - col) * (1.0 - ring * alpha * 1.5);
-
-            // 第 6 层：线条反光。在「弯折后」的位置取样，反光会跟着线走
-            float gm = lmask.sample(smp, uv - offset).r;
-            float glint = strength * exp(-1.4 * pow(x / 2.0, 2.0)) * 0.16;
-            lit += mix(ring, float3(1.0), 0.2) * gm * glint;
-
-            return float4(lit, 1.0);
-        }
-        """
 
         do {
             let library = try device.makeLibrary(source: source, options: nil)

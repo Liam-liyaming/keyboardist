@@ -41,6 +41,19 @@ if CommandLine.arguments.contains("--version") {
     exit(0)
 }
 
+// 自检：Metal 着色器能否编译（不需要屏幕录制权限）
+if CommandLine.arguments.contains("--test-shader") {
+    guard let device = MTLCreateSystemDefaultDevice() else { print("no metal device"); exit(1) }
+    do {
+        _ = try device.makeLibrary(source: haloShaderSource, options: nil)
+        print("shader OK")
+        exit(0)
+    } catch {
+        print("shader FAILED: \(error)")
+        exit(1)
+    }
+}
+
 // 自检：线条掩膜的方向是否正确（画在靠近顶部 → 掩膜里也该在靠近顶部）
 if CommandLine.arguments.contains("--test-mask") {
     let w = 400, h = 200
