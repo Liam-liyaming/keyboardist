@@ -1,7 +1,7 @@
 {
-  "version": "0.4.9",
-  "build": 11,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.9.dmg",
-  "notes": "修复检查更新的错误提示重复",
+  "version": "0.4.10",
+  "build": 12,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.10.dmg",
+  "notes": "验证更新链路：公共更新源已生效",
   "releasedAt": "2026-11-24"
 }
