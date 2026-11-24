@@ -108,16 +108,17 @@ function fire(now) {
 
 function drawWave(now) {
   if (!wave) return;
+  if (now < wave.born) return;
   const t = (now - wave.born) / wave.life;
   if (t > 1) { wave = null; return; }
 
   const maxR = Math.hypot(Math.max(wave.cx, W - wave.cx), Math.max(0, H - wave.cy) + H);
   // 扩散曲线：k = 1 - e^(-3.4t)，归一化后「先快后慢」地鼓起来，
   // 而不是匀速推出去 —— 对应设计稿里那条逼近 top 的曲线
-  const easeOut = (x) => (1 - Math.exp(-2.2 * x)) / (1 - Math.exp(-2.2));
+  const easeOut = (x) => (1 - Math.exp(-1.8 * x)) / (1 - Math.exp(-1.8));
   const R = 40 + easeOut(t) * maxR * 1.05;
   const sigma = 34 + t * 40;
-  const amp = 17 * Math.pow(1 - t, 1.4);          // 位移量随时间衰减
+  const amp = 17 * Math.pow(1 - t, 2.2);          // 位移量随时间衰减
   const palette = PALETTES[paletteKey];
 
   // ---- 2/5 透镜扭曲：只重绘波前附近的环带 ----
@@ -129,7 +130,7 @@ function drawWave(now) {
     const rc = (r0 + r1) / 2;
     const d = amp * Math.exp(-Math.pow((rc - R) / sigma, 2));
     const sBase = 1 + d / rc;
-    if (Math.abs(sBase - 1) < 0.0015) continue;
+    if (Math.abs(sBase - 1) < 0.004) continue;
 
     ctx.save();
     ctx.beginPath();
@@ -168,6 +169,10 @@ function drawWave(now) {
   // ---- 4 色环 ----
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
+  // 横向略宽：像从桌面抬起的波，而不是完美的球
+  ctx.translate(wave.cx, wave.cy);
+  ctx.scale(1.15, 1);
+  ctx.translate(-wave.cx, -wave.cy);
   for (let k = 0; k < 4; k++) {
     const rr = R - k * 9;
     if (rr <= 2) continue;
@@ -180,6 +185,18 @@ function drawWave(now) {
   }
   ctx.restore();
 
+  // ---- 起手闪光：头 180ms 在原点爆一下，给「按下去了」的重量 ----
+  const flashT = (now - wave.born) / 0.18;
+  if (flashT < 1) {
+    const a = Math.pow(1 - flashT, 2) * 0.55;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.translate(wave.cx, wave.cy - 10);
+    ctx.scale(1, 0.22);
+    glow(0, 0, 240 * (0.5 + flashT), palette.colors[0] ? hexToRgb(palette.colors[0]) : CYAN, a);
+    ctx.restore();
+  }
+
   // ---- 6 边线反光：波前接近边缘时窗框提亮 ----
   const reach = Math.max(0, 1 - Math.abs(R - (H + 24)) / (H * 0.55));
   if (reach > 0.01) {
@@ -190,6 +207,21 @@ function drawWave(now) {
 }
 
 /* ---------------- 工具 ---------------- */
+
+function glow(x, y, r, color, alpha) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+  g.addColorStop(0.45, `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.28})`);
+  g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
 
 function hexA(hex, a) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -226,7 +258,7 @@ const SHOT = params.has('t') ? parseFloat(params.get('t')) : null;
 
 if (SHOT !== null) {
   resize();
-  const born = 0.2;
+  const born = 0;
   wave = { born, life: 1.25, cx: W * 0.5, cy: H + 24 };
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.drawImage(base, 0, 0, W, H);
