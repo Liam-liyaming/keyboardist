@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>键盘手 · 打字游戏化原型</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#06080c; overflow:hidden; }
+  body { font-family: -apple-system, "PingFang SC", sans-serif; color:#e8eef8; }
+  #c { width:100vw; height:100vh; display:block; }
+  #hud {
+    position:fixed; left:28px; bottom:18px; right:28px;
+    font-size:12px; color:#4b5566; pointer-events:none;
+    display:flex; justify-content:space-between;
+  }
+  #dump { display:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <span>直接开始打字 · 退格会被判定为「修正」或「改写」 · 回车触发全屏涟漪</span>
+  <span>Esc 退出演示</span>
+</div>
+<div id="dump"></div>
+<script>window.onerror=function(m,u,l,c,e){var d=document.getElementById("dump");d.textContent="ERR "+m+" @"+l;};</script>
+<script src="typing-gamified.js"></script>
+</body>
+</html>
