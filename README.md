@@ -180,3 +180,9 @@ codesign -d -r- "dist/键盘手.app"
 - 中文 IME 的组合态判定依赖选区长，个别输入法可能需要单独适配
 - 多显示器时每块屏都会建一个辉光窗口（暂不支持单独关闭某块屏）
 - 每日之歌尚未实现
+
+
+## 第三方代码
+
+- `demo/vendor/ripppl.global.js`：ripppl 0.1.3（MIT）打包版，加了「波前先快后慢」的 shader 补丁
+- 冲击波光环的数值规格来自 RedSkill 技能 `kubai-shockwave-glow`（作者 @kubai087），实现为本仓库原创
