@@ -25,6 +25,7 @@ final class MenuBarController: NSObject {
 
         configureButton()
         buildMenu()
+        syncHaloMenu(statusItem.menu?.item(withTitle: "冲击波强度")?.submenu)
         refresh()
 
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
@@ -69,6 +70,17 @@ final class MenuBarController: NSObject {
         menu.addItem(appItem)
         menu.addItem(.separator())
         menu.addItem(songItem)
+
+        let haloMenu = NSMenu()
+        for (title, value) in [("轻", 0.45), ("中", 0.7), ("重", 1.0)] {
+            let item = NSMenuItem(title: title, action: #selector(setHaloIntensity(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = value
+            haloMenu.addItem(item)
+        }
+        let haloRoot = NSMenuItem(title: "冲击波强度", action: nil, keyEquivalent: "")
+        haloRoot.submenu = haloMenu
+        menu.addItem(haloRoot)
         menu.addItem(.separator())
 
         glowItem = NSMenuItem(title: "屏幕辉光", action: #selector(toggleGlow), keyEquivalent: "")
@@ -158,6 +170,22 @@ final class MenuBarController: NSObject {
                 if alert.runModal() == .alertSecondButtonReturn {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 }
+            }
+        }
+    }
+
+    @objc private func setHaloIntensity(_ sender: NSMenuItem) {
+        if let value = sender.representedObject as? Double {
+            HaloOverlay.intensity = value
+            syncHaloMenu(sender.menu)
+        }
+    }
+
+    private func syncHaloMenu(_ menu: NSMenu?) {
+        let current = HaloOverlay.intensity
+        menu?.items.forEach { item in
+            if let v = item.representedObject as? Double {
+                item.state = abs(v - current) < 0.01 ? .on : .off
             }
         }
     }

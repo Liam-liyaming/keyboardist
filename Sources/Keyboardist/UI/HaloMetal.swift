@@ -37,7 +37,11 @@ final class HaloMetalView: NSView {
         var pad0: Float = 0
         var pad1: Float = 0
         var pad2: Float = 0
+        var push: Float = 9.8
     }
+
+    /// 位移强度：由菜单里的「冲击波强度」决定
+    var pushScale: Float = 9.8
 
     init?(frame: NSRect, frame captured: CapturedFrame) {
         device = MTLCreateSystemDefaultDevice()
@@ -121,7 +125,7 @@ final class HaloMetalView: NSView {
             float alpha = strength * exp(-1.1 * pow(x / 2.0, 2.0)) * 0.45 * (1.0 - 0.35 * u.reduce);
 
             float z = x * 0.75;
-            float push = 14.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
+            float push = u_push * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
             float2 dir = d > 0.5 ? normalize(p) : float2(0.0);
 
             float edge = min(min(px.x, u.res.x - px.x), min(px.y, u.res.y - px.y));
@@ -220,6 +224,7 @@ final class HaloMetalView: NSView {
         u.growth = h * 1.28
         u.ringW = h * 0.115
         u.reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 1 : 0
+        u.push = pushScale
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture

@@ -41,6 +41,15 @@ final class HaloOverlay {
     private let cooldown: CFTimeInterval = 0.15
     private let easeK: Double = 6.0
 
+    /// 0.45 轻 / 0.7 中 / 1.0 重 —— 存在 UserDefaults，菜单可切
+    static var intensity: Double {
+        get {
+            let v = UserDefaults.standard.double(forKey: "haloIntensity")
+            return v == 0 ? 0.7 : v
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "haloIntensity") }
+    }
+
     /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
     /// 抓帧失败（没有屏幕录制权限）就退回只有色环的降级版。
     func trigger() {
@@ -82,6 +91,7 @@ final class HaloOverlay {
 
         if let captured, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), frame: captured) {
             HaloOverlay.log("metal path")
+            mv.pushScale = Float(HaloOverlay.intensity * 14)
             mv.start()
             w.contentView = mv
             metalView = mv
