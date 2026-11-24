@@ -95,6 +95,7 @@ uniform float u_t;
 uniform vec3 u_c0, u_c1, u_c2, u_c3;
 uniform float u_startR, u_growth, u_ringW;
 uniform float u_k;
+uniform float u_reduce;   // 1 = prefers-reduced-motion
 uniform vec2 u_center;
 out vec4 outColor;
 
@@ -119,11 +120,11 @@ void main() {
   float w3 = exp(-pow((x - 1.5) / 0.8, 2.0));
   float ws = w0 + w1 + w2 + w3 + 1e-4;
   vec3 ring = (u_c0 * w0 + u_c1 * w1 + u_c2 * w2 + u_c3 * w3) / ws;
-  float alpha = strength * exp(-1.1 * pow(x / 2.0, 2.0)) * 0.45;
+  float alpha = strength * exp(-1.1 * pow(x / 2.0, 2.0)) * 0.45 * (1.0 - 0.35 * u_reduce);
 
   // ---- 2 透镜：整片一起弯，不逐环 ----
   float z = x * 0.75;
-  float push = 7.0 * 2.33 * z * exp(-z * z) * strength;
+  float push = 7.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u_reduce);
   vec2 dir = d > 0.5 ? normalize(p) : vec2(0.0);
 
   // ---- 5 边缘：最后 56px 关掉镜头，60px 内做 bevel ----
@@ -136,9 +137,10 @@ void main() {
 
   // ---- 3 通道分离：红 1.08 / 蓝 0.92 ----
   vec3 col;
-  col.r = texture(u_tex, uv - offset * 1.08).r;
+  float split = mix(1.08, 1.0, u_reduce);
+  col.r = texture(u_tex, uv - offset * split).r;
   col.g = texture(u_tex, suv).g;
-  col.b = texture(u_tex, uv - offset * 0.92).b;
+  col.b = texture(u_tex, uv - offset * (2.0 - split)).b;
 
   // ---- 深色模式：加光 ----
   vec3 lit = 1.0 - (1.0 - col) * (1.0 - ring * alpha * 1.5);
@@ -173,7 +175,7 @@ function initGL() {
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
   ['u_tex', 'u_res', 'u_t', 'u_c0', 'u_c1', 'u_c2', 'u_c3',
-   'u_startR', 'u_growth', 'u_ringW', 'u_center', 'u_k'].forEach((name) => {
+   'u_startR', 'u_growth', 'u_ringW', 'u_center', 'u_k', 'u_reduce'].forEach((name) => {
     uniforms[name] = gl.getUniformLocation(program, name);
   });
 
@@ -213,7 +215,8 @@ function render(t) {
   gl.uniform1f(uniforms.u_startR, canvas.height * 0.97);
   gl.uniform1f(uniforms.u_growth, canvas.height * 1.28);
   gl.uniform1f(uniforms.u_ringW, canvas.height * 0.115);
-  gl.uniform1f(uniforms.u_k, 4.0);   // 9 = skill 原版（200ms 走完 79%），演示用 4
+  gl.uniform1f(uniforms.u_k, 4.0);
+  gl.uniform1f(uniforms.u_reduce, reduceMotion ? 1 : 0);   // 9 = skill 原版（200ms 走完 79%），演示用 4
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.uniform1i(uniforms.u_tex, 0);
@@ -222,28 +225,71 @@ function render(t) {
 
 /* ---------------- 主循环 ---------------- */
 
-const DURATION = 1600;   // 演示放慢；skill 原版是 1000ms
-let startAt = -1;
+const DURATION = 1600;    // 演示放慢；skill 原版是 1000ms
+const COOLDOWN = 150;     // 跑完之后再留一点，防止按住回车的连发
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function trigger() {
-  startAt = performance.now();
+let startAt = -1;
+let endAt = -1;
+let composing = false;    // 中文输入法组合态：回车是「上屏」，不该触发
+
+function progress(now) {
+  if (startAt < 0) return 1;
+  return Math.min(1, (now - startAt) / DURATION);
+}
+
+/* 触发闸门：返回 true 表示这次真的放了 */
+function tryTrigger(source) {
+  const now = performance.now();
+
+  if (document.hidden) { note('跳过：页面不可见'); return false; }
+  if (composing) { note('跳过：输入法正在组合'); return false; }
+  if (progress(now) < 1) { note('跳过：上一次还没跑完'); return false; }
+  if (now < endAt + COOLDOWN) { note('跳过：冷却中'); return false; }
+
+  startAt = now;
+  endAt = now + DURATION;
+  note('触发 · ' + source);
+  return true;
+}
+
+window.__halo = { progress: () => progress(performance.now()), trigger: tryTrigger };
+
+function note(text) {
+  hud.dataset.note = text;
 }
 
 function loop() {
-  const elapsed = startAt < 0 ? DURATION : performance.now() - startAt;
-  const t = Math.min(1, elapsed / DURATION);
+  const now = performance.now();
+  const t = progress(now);
   render(t);
-  if (t >= 1) hud.textContent = '按回车 / 空格 / 点击 再触发一次';
-  else hud.textContent = `t=${t.toFixed(2)} · ${paletteKey} · 回车可重放`;
+
+  const tail = now < endAt + COOLDOWN && t >= 1 ? ' · 冷却中' : (t >= 1 ? ' · 回车可重放' : '');
+  hud.textContent = `t=${t.toFixed(2)} · ${paletteKey}${reduceMotion ? ' · 减弱动态' : ''}${tail}`;
   requestAnimationFrame(loop);
 }
 
-// ---- 交互：回车 / 空格 / 点击都能触发 ----
+/* ---------------- 触发条件 ---------------- */
+
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trigger(); }
+  if (e.isComposing || composing) return;          // 输入法回车＝上屏，放行
+  if (e.repeat) return;                            // 按住不放不连发
+  if (e.metaKey || e.ctrlKey || e.altKey) return;  // ⌘↩ 这类组合键交给页面自己处理
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    tryTrigger(e.key === 'Enter' ? '回车' : '空格');
+  }
 });
-window.addEventListener('pointerdown', trigger);
-window.addEventListener('resize', () => { resize(); trigger(); });
+
+window.addEventListener('compositionstart', () => { composing = true; });
+window.addEventListener('compositionend', () => { composing = false; });
+
+window.addEventListener('pointerdown', () => tryTrigger('点击'));
+
+document.addEventListener('visibilitychange', () => {
+  // 切走再回来不要继续跑一半：直接收干净
+  if (document.hidden) { startAt = -1; endAt = -1; }
+});
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -282,6 +328,7 @@ if (SHOT !== null) {
   document.getElementById('dump').textContent = out.toDataURL('image/png');
   hud.textContent = `t=${SHOT} · ${paletteKey}`;
 } else {
+  window.addEventListener('resize', () => resize());   // 只重建资源，不重放
   loop();
-  setTimeout(trigger, 400);   // 进来先放一次
+  setTimeout(() => tryTrigger('首次进入'), 400);
 }
