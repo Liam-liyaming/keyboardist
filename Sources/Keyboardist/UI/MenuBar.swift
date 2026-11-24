@@ -45,6 +45,13 @@ final class MenuBarController: NSObject {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        let verItem = NSMenuItem(title: "键盘手 v\(version) (\(build))", action: nil, keyEquivalent: "")
+        verItem.isEnabled = false
+        menu.addItem(verItem)
+        menu.addItem(.separator())
+
         charsItem = NSMenuItem(title: "今日 0 字", action: nil, keyEquivalent: "")
         charsItem.isEnabled = false
         keysItem = NSMenuItem(title: "击键 0 · 速度 0", action: nil, keyEquivalent: "")

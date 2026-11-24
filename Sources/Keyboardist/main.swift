@@ -33,6 +33,14 @@ if let flag = CommandLine.arguments.firstIndex(of: "--export-notes") {
     }
 }
 
+// 版本号
+if CommandLine.arguments.contains("--version") {
+    let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+    print("键盘手 \(v) (\(b))")
+    exit(0)
+}
+
 // 自检：单独放一次冲击波，2 秒后退出（用来验证窗口是否真的出现）
 if CommandLine.arguments.contains("--test-halo") {
     let app = NSApplication.shared
