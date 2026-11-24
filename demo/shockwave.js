@@ -13,7 +13,10 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
 const PALETTES = {
-  aurora: { name: 'Aurora', colors: ['#5EE7FF', '#8B7CFF', '#FF7AC6', '#FFB07A'] },
+  // 取自设计稿 Aurora Dark：
+  //   rings = rgb(80 140 255), rgb(160 110 255), rgb(255 110 180), rgb(255 190 140)
+  //   语义是「assistant panel swelling in」——鼓起来，不是炸开
+  aurora: { name: 'Aurora', colors: ['#508CFF', '#A06EFF', '#FF6EB4', '#FFBE8C'] },
   halo:   { name: 'Halo',   colors: ['#FFD27A', '#FF9E52', '#FFC46B', '#FFF0C9'] },
   frost:  { name: 'Frost',  colors: ['#9CF5E4', '#6FE7FF', '#B7FFF0', '#DFFFF9'] },
   spark:  { name: 'Spark',  colors: ['#B98CFF', '#FFC94A', '#E0A8FF', '#FFE49A'] },
@@ -108,14 +111,17 @@ function drawWave(now) {
   if (t > 1) { wave = null; return; }
 
   const maxR = Math.hypot(Math.max(wave.cx, W - wave.cx), Math.max(wave.cy, H - wave.cy));
-  const R = 40 + t * maxR * 1.05;
+  // 扩散曲线：k = 1 - e^(-3.4t)，归一化后「先快后慢」地鼓起来，
+  // 而不是匀速推出去 —— 对应设计稿里那条逼近 top 的曲线
+  const easeOut = (x) => (1 - Math.exp(-2.2 * x)) / (1 - Math.exp(-2.2));
+  const R = 40 + easeOut(t) * maxR * 1.05;
   const sigma = 34 + t * 40;
-  const amp = 26 * Math.pow(1 - t, 1.5);          // 位移量随时间衰减
+  const amp = 17 * Math.pow(1 - t, 1.4);          // 位移量随时间衰减
   const palette = PALETTES[paletteKey];
 
   // ---- 2/5 透镜扭曲：只重绘波前附近的环带 ----
-  const bands = 9;
-  const span = sigma * 2.6;
+  const bands = 26;
+  const span = sigma * 2.0;
   for (let i = 0; i < bands; i++) {
     const r0 = Math.max(1, R - span / 2 + (span / bands) * i);
     const r1 = r0 + span / bands + 1;
@@ -130,11 +136,11 @@ function drawWave(now) {
     ctx.arc(wave.cx, wave.cy, r0, 0, Math.PI * 2, true);
     ctx.clip();
 
-    if (i % 3 === 0) {
+    if (i % 5 === 0) {
       // ---- 3 通道分离：红蓝各偏 8%，绿不动 ----
       const passes = [
-        [tints[0], 1 + (d * 1.08) / rc, 0.55],
-        [tints[2], 1 + (d * 0.92) / rc, 0.55],
+        [tints[0], 1 + (d * 1.08) / rc, 0.38],
+        [tints[2], 1 + (d * 0.92) / rc, 0.38],
         [tints[1], sBase, 1.0],
       ];
       ctx.globalCompositeOperation = 'lighter';
@@ -164,7 +170,7 @@ function drawWave(now) {
   for (let k = 0; k < 4; k++) {
     const rr = R - k * 9;
     if (rr <= 2) continue;
-    const a = Math.pow(1 - t, 2.1) * (0.42 - k * 0.07);
+    const a = Math.pow(1 - t, 1.7) * (0.46 - k * 0.075);
     ctx.strokeStyle = hexA(palette.colors[k], a);
     ctx.lineWidth = 5 - k * 0.9;
     ctx.beginPath();
