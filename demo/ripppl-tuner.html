@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>键盘手 · 冲击波调参器</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#06080c; overflow:hidden; }
+  body { font-family:-apple-system,"PingFang SC",sans-serif; color:#e8eef8; }
+
+  #app { position:relative; width:100vw; height:100vh; overflow:hidden;
+         background:radial-gradient(120% 80% at 50% 120%, #0d141d 0%, #06080c 62%); }
+
+  /* 高密度内容：扭曲只有在高频细节上才看得见 */
+  .grid { position:absolute; inset:0;
+          background-image:repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 1px, transparent 1px 14px),
+                           repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 14px); }
+  .page { position:absolute; inset:56px 88px; }
+  h1 { font-size:40px; font-weight:600; }
+  .meta { margin-top:8px; font-size:13px; color:#7f8b9e; }
+  p { margin-top:28px; font-size:13px; line-height:1.9; color:rgba(232,238,248,.72); max-width:760px; }
+  .row { margin-top:26px; display:flex; gap:16px; }
+  .cell { flex:1; height:92px; border-radius:12px; border:1px solid rgba(94,234,232,.2);
+          background:rgba(94,234,232,.05); font-size:12px; color:rgba(94,234,232,.7); padding:14px 16px; }
+
+  #panel {
+    position:fixed; right:16px; top:16px; width:280px; padding:14px 16px 16px;
+    background:rgba(10,14,20,.86); border:1px solid rgba(255,255,255,.1);
+    border-radius:14px; backdrop-filter:blur(12px); font-size:12px;
+  }
+  #panel h2 { font-size:12px; font-weight:600; color:#9aa6b8; letter-spacing:.08em; margin-bottom:10px; }
+  .ctl { margin-bottom:9px; }
+  .ctl label { display:flex; justify-content:space-between; color:#8b96a8; margin-bottom:4px; }
+  .ctl b { color:#dfe7f2; font-weight:500; font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; height:3px; appearance:none; background:rgba(255,255,255,.14); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb { appearance:none; width:12px; height:12px; border-radius:50%;
+    background:#5eeae8; cursor:pointer; }
+  #fire { width:100%; margin-top:8px; padding:9px; border-radius:9px; cursor:pointer;
+    border:1px solid rgba(94,234,232,.3); background:rgba(94,234,232,.1); color:#9ff0ee; font-size:12px; }
+  #copy { width:100%; margin-top:6px; padding:8px; border-radius:9px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.14); background:transparent; color:#8b96a8; font-size:11px; }
+  #banner { position:fixed; left:88px; bottom:18px; font-size:12px; color:#5d6878; }
+  #dump { display:none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="grid"></div>
+  <div class="page">
+    <h1>每日之歌</h1>
+    <div class="meta">2026-11-23 · BPM 82 · 88 秒</div>
+    <p>灯下写字的人，手指比思绪快半拍。每一次敲击落下去，屏幕底部就亮起一小片光，像是键盘在呼吸。今天敲了 1012 次，179 个字，18 段会话——它们会被写成一首曲子，明晚放给你听。</p>
+    <div class="row">
+      <div class="cell">字数 179</div>
+      <div class="cell">击键 1012</div>
+      <div class="cell">会话 18</div>
+    </div>
+  </div>
+</div>
+
+<div id="panel">
+  <h2>冲击波参数</h2>
+  <div class="ctl"><label>amplitude 幅度 <b id="v-amplitude"></b></label><input id="amplitude" type="range" min="0" max="12" step="0.2"></div>
+  <div class="ctl"><label>frequency 环密 <b id="v-frequency"></b></label><input id="frequency" type="range" min="0.002" max="0.06" step="0.001"></div>
+  <div class="ctl"><label>speed 速度 <b id="v-speed"></b></label><input id="speed" type="range" min="100" max="2000" step="20"></div>
+  <div class="ctl"><label>damping 拖尾 <b id="v-damping"></b></label><input id="damping" type="range" min="0" max="0.2" step="0.002"></div>
+  <div class="ctl"><label>decay 衰减 <b id="v-decay"></b></label><input id="decay" type="range" min="0.2" max="3" step="0.05"></div>
+  <div class="ctl"><label>duration 时长 <b id="v-duration"></b></label><input id="duration" type="range" min="300" max="4000" step="50"></div>
+  <div class="ctl"><label>chromatic 色散 <b id="v-chromaticIntensity"></b></label><input id="chromaticIntensity" type="range" min="0" max="1" step="0.02"></div>
+  <button id="fire">触发（或按回车）</button>
+  <button id="copy">复制当前参数</button>
+</div>
+<div id="banner">回车触发 · 从底边起</div>
+<div id="dump"></div>
+
+<script src="vendor/ripppl.global.js"></script>
+<script src="ripppl-tuner.js"></script>
+</body>
+</html>
