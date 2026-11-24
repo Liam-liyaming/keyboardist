@@ -5,10 +5,10 @@ const app = document.getElementById('app');
 const DEFAULTS = {
   amplitude: 6.0,
   frequency: 0.020,
-  speed: 620,
+  speed: 2600,   // 新语义：初始速度，波前最终停在 speed/2.4 像素处
   damping: 0.02,
   decay: 1.0,
-  duration: 2000,
+  duration: 2200,
   chromatic: true,
   chromaticIntensity: 0.5,
   shimmer: 'oklch(0.62 0.22 295)',

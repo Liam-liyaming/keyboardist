@@ -71,7 +71,30 @@
 
 ---
 
-## 五、验证说明
+## 五、补丁：把匀速波前改成「先快后慢」
+
+ripppl 原版 shader 是匀速的：
+
+```glsl
+float front = t * u_speed;                        // 线性，调 speed 只能改快慢
+float phase = dist * u_freq - t * u_speed * u_freq;
+```
+
+改成指数逼近（`demo/vendor/ripppl.global.js` 里已打补丁，文件头有标注）：
+
+```glsl
+float front = (u_speed / 2.4) * (1.0 - exp(-2.4 * t));   // 起始速度 u_speed，渐慢
+float phase = (dist - front) * u_freq;                   // 环随波前一起减速
+```
+
+**语义变化**：`u_speed` 从「恒定速度」变成「初始速度」，最终波前停在 `u_speed / 2.4` 像素处。
+
+- `u_speed = 2600` → 最远推到约 1083px，1200 宽的视口刚好扫完
+- 系数 `2.4` 决定减速快慢：越大停得越快，越小滑得越远
+
+这就是「先快后慢」的来源——不是缓动函数套在外面，而是波前的运动方程本身带阻尼。
+
+## 六、验证说明
 
 **headless Chrome + swiftshader 下 ripppl 产不出画面**：它的 DOM 快照（SVG foreignObject → canvas → WebGL 纹理）在无 GPU 环境里输出空纹理，画布全透明。这不是参数问题——最小复现页（一个渐变 div）同样全空。
 

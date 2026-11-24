@@ -1,3 +1,4 @@
+/* 已打补丁：波前改为指数逼近 (u_speed/2.4)*(1-exp(-2.4t))，实现先快后慢 */
 function MB(e) {
   return e && e.__esModule && Object.prototype.hasOwnProperty.call(e, "default") ? e.default : e;
 }
@@ -5578,12 +5579,12 @@ void main(){
     float dist = length(diff);
     if(dist < 0.5) continue;
 
-    float front = t * u_speed;
+    float front = (u_speed / 2.4) * (1.0 - exp(-2.4 * t));  /* patched: ease-out wavefront, fast then slow */
     float behind = front - dist;
     float mask = smoothstep(0.0, 2.0, behind);
     float ringDecay = exp(-behind * u_damp);
     float temporal = exp(-t * u_decay);
-    float phase = dist * u_freq - t * u_speed * u_freq;
+    float phase = (dist - front) * u_freq;
     float wave = sin(phase) * mask * ringDecay * temporal;
     float center = smoothstep(0.0, 10.0, dist);
 
