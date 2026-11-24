@@ -223,12 +223,27 @@ function render(t) {
 /* ---------------- 主循环 ---------------- */
 
 const DURATION = 1600;   // 演示放慢；skill 原版是 1000ms
+let startAt = -1;
+
+function trigger() {
+  startAt = performance.now();
+}
 
 function loop() {
-  const t = Math.min(1, (performance.now() - t0) / DURATION);
+  const elapsed = startAt < 0 ? DURATION : performance.now() - startAt;
+  const t = Math.min(1, elapsed / DURATION);
   render(t);
+  if (t >= 1) hud.textContent = '按回车 / 空格 / 点击 再触发一次';
+  else hud.textContent = `t=${t.toFixed(2)} · ${paletteKey} · 回车可重放`;
   requestAnimationFrame(loop);
 }
+
+// ---- 交互：回车 / 空格 / 点击都能触发 ----
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trigger(); }
+});
+window.addEventListener('pointerdown', trigger);
+window.addEventListener('resize', () => { resize(); trigger(); });
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -239,14 +254,13 @@ function resize() {
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   scene = buildScene();
-  uploadScene();
+  if (texture) uploadScene();
 }
 
 /* ---------------- 启动 / 截图 ---------------- */
 
-resize();
 initGL();
-uploadScene();
+resize();          // resize 内部会 buildScene + uploadScene
 
 if (SHOT !== null) {
   // 静态帧：渲染一次，用 readPixels 取回（不依赖页面合成）
@@ -269,5 +283,5 @@ if (SHOT !== null) {
   hud.textContent = `t=${SHOT} · ${paletteKey}`;
 } else {
   loop();
-  window.addEventListener('resize', () => { resize(); });
+  setTimeout(trigger, 400);   // 进来先放一次
 }
