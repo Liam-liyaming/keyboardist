@@ -52,6 +52,8 @@ enum UpdateChecker {
                 throw CheckError.network("HTTP \(http.statusCode)")
             }
             return try JSONDecoder().decode(Appcast.self, from: data)
+        } catch let error as CheckError {
+            throw error                                  // 别把已经包好的错误再包一层
         } catch let error as DecodingError {
             throw CheckError.decode(String(describing: error))
         } catch {
