@@ -41,16 +41,30 @@ let mode = 'both';   // both | aura | ripple
 function auraPulse() {
   const strength = parseFloat(document.getElementById('aura-strength').value);
   aura.style.setProperty('--s', strength);
-  aura.classList.add('on');
-  clearTimeout(auraPulse._t1);
-  clearTimeout(auraPulse._t2);
-  auraPulse._t1 = setTimeout(() => aura.classList.remove('on'), 900);
+  aura.classList.remove('pulse');
+  void aura.offsetWidth;          // 强制重排，让动画能重放
+  aura.classList.add('pulse');
 }
 
+let staggerTimer = null;
+
 function fire() {
+  const stagger = parseInt(document.getElementById('stagger').value, 10);
+  // 1) 先亮边缘：像是「按下去」的那一下
   if (mode !== 'ripple') auraPulse();
-  if (mode !== 'aura') handle.trigger({ x: 0.5, y: 1.0 });
+  // 2) 再放波纹：像是「空间被推开」，晚 100ms 才像因果
+  clearTimeout(staggerTimer);
+  if (mode !== 'aura') {
+    if (stagger <= 0) handle.trigger({ x: 0.5, y: 1.0 });
+    else staggerTimer = setTimeout(() => handle.trigger({ x: 0.5, y: 1.0 }), stagger);
+  }
 }
+
+// 错开数值回显
+const staggerInput = document.getElementById('stagger');
+staggerInput.addEventListener('input', () => {
+  document.getElementById('v-stagger').textContent = staggerInput.value;
+});
 
 document.getElementById('mode').addEventListener('click', () => {
   mode = mode === 'both' ? 'aura' : mode === 'aura' ? 'ripple' : 'both';

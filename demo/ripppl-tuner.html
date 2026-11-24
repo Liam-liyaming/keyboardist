@@ -51,6 +51,14 @@
     transition: opacity .45s ease-out;
   }
   #aura.on { opacity: var(--s, 0.7); }
+  #aura.pulse { animation: breathe 1.3s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes breathe {
+    0%   { opacity: 0; }
+    10%  { opacity: calc(var(--s, .7) * 1.0); }
+    34%  { opacity: calc(var(--s, .7) * 0.42); }
+    58%  { opacity: calc(var(--s, .7) * 0.88); }
+    100% { opacity: 0; }
+  }
   #aura::after {
     content:''; position:absolute; inset:-10%;
     background:conic-gradient(from 0deg,
@@ -91,6 +99,7 @@
   <div class="ctl"><label>damping 拖尾 <b id="v-damping"></b></label><input id="damping" type="range" min="0" max="0.2" step="0.002"></div>
   <div class="ctl"><label>decay 衰减 <b id="v-decay"></b></label><input id="decay" type="range" min="0.2" max="3" step="0.05"></div>
   <div class="ctl"><label>duration 时长 <b id="v-duration"></b></label><input id="duration" type="range" min="300" max="4000" step="50"></div>
+  <div class="ctl"><label>错开（边缘→波纹） <b id="v-stagger">100</b> ms</label><input id="stagger" type="range" min="0" max="320" step="10" value="100"></div>
   <div class="ctl"><label>边缘光晕强度 <b id="v-aura"></b></label><input id="aura-strength" type="range" min="0" max="1" step="0.05" value="0.7"></div>
   <div class="ctl"><label>chromatic 色散 <b id="v-chromaticIntensity"></b></label><input id="chromaticIntensity" type="range" min="0" max="1" step="0.02"></div>
   <button id="fire">触发（或按回车）</button>
