@@ -3,10 +3,10 @@
 const app = document.getElementById('app');
 
 const DEFAULTS = {
-  amplitude: 6.0,
-  frequency: 0.020,
-  speed: 2600,   // 新语义：初始速度，波前最终停在 speed/2.4 像素处
-  damping: 0.02,
+  amplitude: 4.5,
+  frequency: 0.012,
+  speed: 2400,   // 新语义：初始速度，波前最终停在 speed/2.4 像素处
+  damping: 0.035,
   decay: 1.0,
   duration: 2200,
   chromatic: true,
@@ -34,9 +34,29 @@ SLIDERS.forEach((key) => {
   });
 });
 
-function fire() {
-  handle.trigger({ x: 0.5, y: 1.0 });
+// ---- 边缘光晕：Siri 那种「边框在发光」，和波纹是两回事 ----
+const aura = document.getElementById('aura');
+let mode = 'both';   // both | aura | ripple
+
+function auraPulse() {
+  const strength = parseFloat(document.getElementById('aura-strength').value);
+  aura.style.setProperty('--s', strength);
+  aura.classList.add('on');
+  clearTimeout(auraPulse._t1);
+  clearTimeout(auraPulse._t2);
+  auraPulse._t1 = setTimeout(() => aura.classList.remove('on'), 900);
 }
+
+function fire() {
+  if (mode !== 'ripple') auraPulse();
+  if (mode !== 'aura') handle.trigger({ x: 0.5, y: 1.0 });
+}
+
+document.getElementById('mode').addEventListener('click', () => {
+  mode = mode === 'both' ? 'aura' : mode === 'aura' ? 'ripple' : 'both';
+  const btn = document.getElementById('mode');
+  btn.textContent = '模式：' + ({ both: '两者', aura: '仅边缘', ripple: '仅波纹' })[mode];
+});
 
 document.getElementById('fire').addEventListener('click', fire);
 window.addEventListener('keydown', (e) => {
