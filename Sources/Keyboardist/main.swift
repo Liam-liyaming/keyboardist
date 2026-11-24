@@ -33,6 +33,16 @@ if let flag = CommandLine.arguments.firstIndex(of: "--export-notes") {
     }
 }
 
+// 自检：单独放一次冲击波，2 秒后退出（用来验证窗口是否真的出现）
+if CommandLine.arguments.contains("--test-halo") {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let halo = HaloOverlay()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { halo.trigger() }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { exit(0) }
+    app.run()
+}
+
 // 无界面模式：直接渲染今日之歌（便于自动化验证）
 if let flag = CommandLine.arguments.firstIndex(of: "--render-song") {
     let store = Store()

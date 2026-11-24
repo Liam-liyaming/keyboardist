@@ -112,6 +112,22 @@ final class TextMeter {
         }
     }
 
+    /// 此刻焦点控件是否处于输入法组合态（回车此时是「上屏」，不是「提交」）
+    func isComposingNow() -> Bool {
+        guard !KeyCapture.isSecureInputEnabled() else { return true }
+
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.05)
+
+        var focusedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
+              let focusedRef,
+              CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
+        else { return false }
+
+        return isComposing(focusedRef as! AXUIElement)
+    }
+
     // MARK: - AX 读取（只取整数）
 
     private func readLength(_ element: AXUIElement) -> Int? {

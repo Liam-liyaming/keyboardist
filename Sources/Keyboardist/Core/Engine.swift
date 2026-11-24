@@ -11,6 +11,9 @@ final class Engine {
     /// 数据变化，供菜单栏刷新
     var onChange: (() -> Void)?
 
+    /// 回车（keyCode 36）：交给冲击波
+    var onEnter: (() -> Void)?
+
     private var recentKeys: [Double] = []
     private var lastKeyAt: Double = 0
 
@@ -113,6 +116,14 @@ final class Engine {
 
         onKey?(code, speed)
         scheduleSave()
+
+        // 回车 = 提交。输入法组合中时回车是「上屏」，不能算提交。
+        if code == 36 {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, !self.meter.isComposingNow() else { return }
+                self.onEnter?()
+            }
+        }
     }
 
     // MARK: - 字数

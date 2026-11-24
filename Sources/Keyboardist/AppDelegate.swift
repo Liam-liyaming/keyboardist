@@ -3,6 +3,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let engine = Engine()
     private let glow = GlowOverlay()
+    private let halo = HaloOverlay()
     private var menuBar: MenuBarController?
     private var targetingTimer: Timer?
 
@@ -12,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         engine.onChange = { [weak self] in
             self?.menuBar?.refresh()
+        }
+        engine.onEnter = { [weak self] in
+            self?.halo.trigger()
         }
 
         menuBar = MenuBarController(engine: engine, glow: glow)
