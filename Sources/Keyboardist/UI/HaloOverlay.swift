@@ -19,6 +19,24 @@ final class HaloOverlay {
 
     private var lastEnd: CFTimeInterval = -1
 
+    /// 每次触发的诊断日志：写 ~/Library/Application Support/Keyboardist/halo.log
+    static func log(_ text: String) {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Keyboardist", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("halo.log")
+        let line = "\(Date().formatted(date: .omitted, time: .standard))  \(text)\n"
+        if let data = line.data(using: .utf8) {
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                try? handle.close()
+            } else {
+                try? data.write(to: url)
+            }
+        }
+    }
+
     private let duration: CFTimeInterval = 1.15
     private let cooldown: CFTimeInterval = 0.15
     private let easeK: Double = 6.0
@@ -29,6 +47,8 @@ final class HaloOverlay {
         let now = CACurrentMediaTime()
         guard now > lastEnd + cooldown else { return }
         guard let screen = ActiveWindow.glowTarget(height: 0)?.screen ?? NSScreen.main else { return }
+
+        HaloOverlay.log("trigger  screen=\(screen.localizedName)  screen-rec=\(ScreenShot.hasPermission())")
 
         // 抓帧本身要几十毫秒，把闸门的结束时间往后推
         lastEnd = now + duration + 0.4
@@ -58,11 +78,15 @@ final class HaloOverlay {
         w.level = .screenSaver
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 
+        HaloOverlay.log("captured=\(image != nil)  size=\(image.map { "\($0.width)x\($0.height)" } ?? "-")")
+
         if let image, let mv = HaloMetalView(frame: NSRect(origin: .zero, size: frame.size), image: image) {
+            HaloOverlay.log("metal path")
             mv.start()
             w.contentView = mv
             metalView = mv
         } else {
+            HaloOverlay.log("fallback: rings only")
             let v = HaloView(frame: NSRect(origin: .zero, size: frame.size))
             v.easeK = easeK
             v.progress = 0
