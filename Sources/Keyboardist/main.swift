@@ -43,7 +43,16 @@ if CommandLine.arguments.contains("--version") {
 
 // 自检：单独放一次冲击波，2 秒后退出（用来验证窗口是否真的出现）
 if CommandLine.arguments.contains("--test-halo") {
-    let app = NSApplication.shared
+    // 单实例：已经有同名 App 在跑就直接激活它并退出
+let bundleID = Bundle.main.bundleIdentifier ?? "com.liyaming.keyboardist"
+let me = ProcessInfo.processInfo.processIdentifier
+if let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+    .first(where: { $0.processIdentifier != me }) {
+    other.activate(options: [.activateIgnoringOtherApps])
+    exit(0)
+}
+
+let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     let halo = HaloOverlay()
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { halo.trigger() }
@@ -65,6 +74,15 @@ if let flag = CommandLine.arguments.firstIndex(of: "--render-song") {
         FileHandle.standardError.write("render failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
+}
+
+// 单实例：已经有同名 App 在跑就直接激活它并退出
+let bundleID = Bundle.main.bundleIdentifier ?? "com.liyaming.keyboardist"
+let me = ProcessInfo.processInfo.processIdentifier
+if let other = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+    .first(where: { $0.processIdentifier != me }) {
+    other.activate(options: [.activateIgnoringOtherApps])
+    exit(0)
 }
 
 let app = NSApplication.shared
