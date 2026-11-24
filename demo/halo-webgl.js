@@ -124,7 +124,7 @@ void main() {
 
   // ---- 2 透镜：整片一起弯，不逐环 ----
   float z = x * 0.75;
-  float push = 7.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u_reduce);
+  float push = 14.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u_reduce);
   vec2 dir = d > 0.5 ? normalize(p) : vec2(0.0);
 
   // ---- 5 边缘：最后 56px 关掉镜头，60px 内做 bevel ----
@@ -211,7 +211,7 @@ function render(t) {
   gl.uniform3fv(uniforms.u_c2, hexToVec3(colors[2]));
   gl.uniform3fv(uniforms.u_c3, hexToVec3(colors[3]));
   // 圆心在页面下方约一个屏高处，起点半径刚好在底边
-  gl.uniform2f(uniforms.u_center, canvas.width * 0.5, -canvas.height * 0.97);
+  gl.uniform2f(uniforms.u_center, canvas.width * 0.82, -canvas.height * 0.97);
   gl.uniform1f(uniforms.u_startR, canvas.height * 0.97);
   gl.uniform1f(uniforms.u_growth, canvas.height * 1.28);
   gl.uniform1f(uniforms.u_ringW, canvas.height * 0.115);

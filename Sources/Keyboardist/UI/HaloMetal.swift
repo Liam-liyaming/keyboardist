@@ -118,7 +118,7 @@ final class HaloMetalView: NSView {
             float alpha = strength * exp(-1.1 * pow(x / 2.0, 2.0)) * 0.45 * (1.0 - 0.35 * u.reduce);
 
             float z = x * 0.75;
-            float push = 7.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
+            float push = 14.0 * 2.33 * z * exp(-z * z) * strength * (1.0 - 0.9 * u.reduce);
             float2 dir = d > 0.5 ? normalize(p) : float2(0.0);
 
             float edge = min(min(px.x, u.res.x - px.x), min(px.y, u.res.y - px.y));
@@ -185,7 +185,8 @@ final class HaloMetalView: NSView {
 
         var u = Uniforms()
         u.res = SIMD2(w, h)
-        u.center = SIMD2(w * 0.5, h * 1.97)          // 圆心在屏幕下方约一个屏高
+        let colX = Float(KeyLayout.normalizedX(for: 36) ?? 0.82)
+        u.center = SIMD2(w * colX, h * 1.97)       // 起点对齐回车键的横向位置
         u.c0 = SIMD4(80 / 255, 140 / 255, 255 / 255, 1)
         u.c1 = SIMD4(160 / 255, 110 / 255, 255 / 255, 1)
         u.c2 = SIMD4(255 / 255, 110 / 255, 180 / 255, 1)

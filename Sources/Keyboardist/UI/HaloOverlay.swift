@@ -192,7 +192,8 @@ final class HaloView: NSView {
                                         locations: locations) else { return }
 
         // 圆心在屏幕下方约一个屏高处，所以看到的是一道从底边升起的弧
-        let center = CGPoint(x: bounds.midX, y: -H * 0.97)
+        let colX = CGFloat(KeyLayout.normalizedX(for: 36) ?? 0.82)
+        let center = CGPoint(x: bounds.width * colX, y: -H * 0.97)
         let inner = max(1, R - span * ringW)
         let outer = R + span * ringW
 
