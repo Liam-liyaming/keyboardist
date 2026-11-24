@@ -12,6 +12,8 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
+const DISTORTION = false;   // 逐像素位移留到 Metal 版本
+
 const PALETTES = {
   // 取自设计稿 Aurora Dark：
   //   rings = rgb(80 140 255), rgb(160 110 255), rgb(255 110 180), rgb(255 190 140)
@@ -121,7 +123,8 @@ function drawWave(now) {
   const amp = 17 * Math.pow(1 - t, 2.2);          // 位移量随时间衰减
   const palette = PALETTES[paletteKey];
 
-  // ---- 2/5 透镜扭曲：只重绘波前附近的环带 ----
+  // ---- 2/5 透镜扭曲（默认关闭）----
+  if (DISTORTION) {
   const bands = 26;
   const span = sigma * 2.0;
   for (let i = 0; i < bands; i++) {
@@ -166,23 +169,53 @@ function drawWave(now) {
     ctx.restore();
   }
 
-  // ---- 4 色环 ----
+  }
+
+  // ---- 4 色环：一条带，不是四道线 ----
+  // 用「粗描边 + 径向渐变」实现：渐变按半径着色，线宽就是带的宽度，
+  // 两端 alpha 收到 0，于是没有硬边；颜色在带内平滑过渡。
+  const paint = (R, width, alpha) => {
+    const rIn = Math.max(2, R - width / 2);
+    const rOut = R + width / 2;
+    const g = ctx.createRadialGradient(wave.cx, wave.cy, rIn, wave.cx, wave.cy, rOut);
+    const c = palette.colors;
+    g.addColorStop(0.00, hexA(c[0], 0));
+    g.addColorStop(0.22, hexA(c[0], alpha * 0.55));
+    g.addColorStop(0.44, hexA(c[1], alpha * 0.62));
+    g.addColorStop(0.66, hexA(c[2], alpha * 0.55));
+    g.addColorStop(0.86, hexA(c[3], alpha * 0.40));
+    g.addColorStop(1.00, hexA(c[3], 0));
+
+    // 填充一个圆环（外圈 + 内圈反向），而不是描边：
+    // 描边 + lighter 会让路径每一段反复叠加，出现同心条纹
+    const segs = 160;
+    const phase = wave.born * 6.0;
+    const pts = (r, reverse) => {
+      for (let i = 0; i <= segs; i++) {
+        const idx = reverse ? segs - i : i;
+        const th = (idx / segs) * Math.PI * 2;
+        const wob = Math.sin(th * 3 + phase) * 1.8 + Math.sin(th * 7 - phase * 1.7) * 0.9;
+        const rr = r + wob;
+        const x = wave.cx + Math.cos(th) * rr * 1.15;
+        const y = wave.cy + Math.sin(th) * rr;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    };
+
+    ctx.beginPath();
+    pts(rOut, false);
+    ctx.closePath();
+    pts(rIn, true);
+    ctx.closePath();
+    ctx.fillStyle = g;
+    ctx.fill('evenodd');
+  };
+
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  // 横向略宽：像从桌面抬起的波，而不是完美的球
-  ctx.translate(wave.cx, wave.cy);
-  ctx.scale(1.15, 1);
-  ctx.translate(-wave.cx, -wave.cy);
-  for (let k = 0; k < 4; k++) {
-    const rr = R - k * 9;
-    if (rr <= 2) continue;
-    const a = Math.pow(1 - t, 1.7) * (0.46 - k * 0.075);
-    ctx.strokeStyle = hexA(palette.colors[k], a);
-    ctx.lineWidth = 5 - k * 0.9;
-    ctx.beginPath();
-    ctx.arc(wave.cx, wave.cy, rr, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  const fade = Math.pow(1 - t, 1.9);
+  paint(R, 26, 0.75 * fade);          // 主带：一条，边缘自然掉到 0
+  paint(R, 150, 0.07 * fade);
   ctx.restore();
 
   // ---- 起手闪光：头 180ms 在原点爆一下，给「按下去了」的重量 ----
