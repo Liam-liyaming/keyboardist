@@ -1,7 +1,7 @@
 {
-  "version": "0.4.21",
-  "build": 23,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.21.dmg",
-  "notes": "回车后最多观察 400ms 直到输入框清空",
+  "version": "0.4.22",
+  "build": 24,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.22.dmg",
+  "notes": "冲击波按输入焦点所在屏幕定位，不再按最前窗口",
   "releasedAt": "2026-11-25"
 }

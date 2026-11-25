@@ -80,6 +80,48 @@ enum ActiveWindow {
     }
 
     /// CG（左上原点）→ AppKit（左下原点）
+    /// 当前输入焦点元素（光标所在控件）的矩形。
+    /// 这比「最前窗口」准：多屏时用户可能在 A 屏的窗口里打字，
+    /// 但系统的「最前窗口」记录指向 B 屏。
+    static func focusedElementFrame() -> CGRect? {
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.05)
+
+        var ref: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &ref) == .success,
+              let ref, CFGetTypeID(ref) == AXUIElementGetTypeID() else { return nil }
+
+        let element = ref as! AXUIElement
+        var posRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let posRef, let sizeRef,
+              CFGetTypeID(posRef) == AXValueGetTypeID(),
+              CFGetTypeID(sizeRef) == AXValueGetTypeID() else { return nil }
+
+        var point = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(posRef as! AXValue, .cgPoint, &point),
+              AXValueGetValue(sizeRef as! AXValue, .cgSize, &size) else { return nil }
+        return CGRect(origin: point, size: size)
+    }
+
+    /// 冲击波应该出现在哪块屏：以输入焦点为准，逐级退让。
+    static func caretScreen() -> (screen: NSScreen, source: String) {
+        if let frame = focusedElementFrame() {
+            let appKit = toAppKit(frame)
+            let center = CGPoint(x: appKit.midX, y: appKit.midY)
+            if let screen = NSScreen.screens.first(where: { $0.frame.contains(center) }) {
+                return (screen, "caret")
+            }
+        }
+        if let target = glowTarget(height: 220) {
+            return (target.screen, "front window")
+        }
+        return (NSScreen.main ?? NSScreen.screens[0], "main")
+    }
+
     static func toAppKit(_ cgRect: CGRect) -> CGRect {
         guard let primary = primaryScreen else { return cgRect }
         let flippedY = primary.frame.maxY - cgRect.maxY

@@ -82,10 +82,11 @@ final class HaloOverlay {
             HaloOverlay.log("trigger skipped: still running")
             return
         }
-        guard let screen = ActiveWindow.glowTarget(height: 0)?.screen ?? NSScreen.main else { return }
+        let target = ActiveWindow.caretScreen()
+        let screen = target.screen
 
         isRunning = true
-        HaloOverlay.log("trigger  screen=\(screen.localizedName)  screen-rec=\(ScreenShot.hasPermission())")
+        HaloOverlay.log("trigger  screen=\(screen.localizedName) via=\(target.source)  screen-rec=\(ScreenShot.hasPermission())")
 
         Task {
             let image = await ScreenShot.capture(screen: screen)
