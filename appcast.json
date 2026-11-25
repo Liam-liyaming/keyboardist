@@ -1,7 +1,7 @@
 {
-  "version": "0.4.19",
-  "build": 21,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.19.dmg",
-  "notes": "取消无边框窗口的位置钳制，光环能正确画到副屏",
+  "version": "0.4.20",
+  "build": 22,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.20.dmg",
+  "notes": "回车只在输入框被清空时触发（拼音上屏不变短也会被误判）",
   "releasedAt": "2026-11-25"
 }

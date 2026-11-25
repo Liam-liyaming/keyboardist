@@ -145,22 +145,15 @@ final class Engine {
             } else if !context.textFocused {
                 HaloOverlay.log("enter skipped: no text field  \(tag)")
             } else {
-                // 不靠时序猜，每次回车都验证「有没有真的提交」：
-                //   输入框变少 / 焦点离开 → 提交，放光环
-                //   文本没变 或 变长       → 插入（输入法上屏、换行）→ 跳过
+                // 判据：「输入框被清空」才算提交。
                 //
-                // 早先版本用「回车前 1.5 秒内有没有打字母」来决定要不要验证，
-                // 结果同样是敲英文，打得快就跳过、停顿一下就直接放行——按时间分叉是错的。
-                // 只有「回车前一个键是字母」才存在输入法确认英文的歧义，才需要等。
-                // 打完空格/标点/退格再回车，一定是提交，立刻放。
-                let mayBeComposing = Engine.letterKeyCodes.contains(previousKeyCode)
-
-                if !mayBeComposing {
-                    HaloOverlay.log("enter immediate (prev key not a letter)  \(tag)")
-                    DispatchQueue.main.async { [weak self] in self?.onEnter?() }
-                    return
-                }
-
+                // 不能用「长度变少」——拼音上屏本身就会变短：
+                //   nihao(5) → 你好(2)，掉了 3 个字符；
+                //   hello(5) → 6→6，不变。
+                // 只有真正发送，输入框才会回到 0。
+                //
+                // 也不再有「回车前不是字母就立即放」的快速路径：
+                // 那条路绕过了验证，是输入法确认被误触发的入口。
                 let before = meter.probeLength()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                     guard let self else { return }
@@ -173,11 +166,22 @@ final class Engine {
                         HaloOverlay.log("enter verified: left the field (before=\(beforeText))  \(tag)")
                         self.onEnter?()
                     case .length(let now):
-                        if case .length(let was) = before, now < was {
-                            HaloOverlay.log("enter verified: cleared \(beforeText) → \(afterText)  \(tag)")
+                        if now == 0, case .length(let was) = before, was > 0 {
+                            HaloOverlay.log("enter verified: emptied \(beforeText) → 0  \(tag)")
                             self.onEnter?()
                         } else {
-                            HaloOverlay.log("enter skipped: text kept or grew \(beforeText) → \(afterText)  \(tag)")
+                            // 有些输入框清空得慢（React 异步更新），再等一次。
+                            // 输入法上屏永远等不到 0，所以这条兜底不会让它误触发。
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { [weak self] in
+                                guard let self else { return }
+                                let later = self.meter.probeLength()
+                                if case .length(0) = later {
+                                    HaloOverlay.log("enter verified: emptied slowly \(beforeText) → 0  \(tag)")
+                                    self.onEnter?()
+                                } else {
+                                    HaloOverlay.log("enter skipped: not emptied \(beforeText) → \(afterText) → \(Engine.describe(later))  \(tag)")
+                                }
+                            }
                         }
                     case .failed:
                         // 读不到不等于没提交，宁可少放一次也不误放
