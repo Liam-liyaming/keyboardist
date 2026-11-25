@@ -145,7 +145,7 @@ final class Engine {
             if composing {
                 HaloOverlay.log("enter skipped: composing  \(tag)")
             } else if !context.textFocused {
-                HaloOverlay.log("enter skipped: no text field  \(tag)")
+                HaloOverlay.log("enter skipped: no text field role=\(meter.focusedRole())  \(tag)")
             } else {
                 // 判据开始之前就把截帧发出去，省的把截帧时间叠在判定后面
                 onEnterPrepare?()

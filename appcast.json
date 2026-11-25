@@ -1,7 +1,7 @@
 {
-  "version": "0.4.25",
-  "build": 27,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.25.dmg",
-  "notes": "启动预热冲击波窗口，首次回车也走复用",
+  "version": "0.4.26",
+  "build": 28,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.26.dmg",
+  "notes": "release: v0.4.25 (build 27)",
   "releasedAt": "2026-11-25"
 }

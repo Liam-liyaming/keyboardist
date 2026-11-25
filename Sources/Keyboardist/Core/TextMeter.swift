@@ -138,10 +138,35 @@ final class TextMeter {
             role = value
         }
 
-        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
-        let textFocused = textRoles.contains(role)
+        return (isComposing(element), isTextTarget(element, role))
+    }
 
-        return (isComposing(element), textFocused)
+    /// 是不是「可以打字的控件」。多重判定：角色白名单 → 可编辑属性 → 角色名含 Text。
+    /// 光靠角色白名单会漏（微信的输入框就不在白名单里）。
+    private func isTextTarget(_ element: AXUIElement, _ role: String) -> Bool {
+        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
+        if textRoles.contains(role) { return true }
+        if role.contains("Text") { return true }
+
+        var editableRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, "AXEditable" as CFString, &editableRef) == .success,
+           let editableRef, let editable = editableRef as? Bool, editable {
+            return true
+        }
+        return false
+    }
+
+    /// 诊断用：当前焦点元素的角色名
+    func focusedRole() -> String {
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.03)
+        var focusedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
+              let focusedRef, CFGetTypeID(focusedRef) == AXUIElementGetTypeID() else { return "none" }
+        var roleRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(focusedRef as! AXUIElement, kAXRoleAttribute as CFString, &roleRef) == .success,
+              let roleRef, let role = roleRef as? String else { return "unknown" }
+        return role
     }
 
     /// 探针结果：必须区分「不是文本控件」和「查询失败」——
