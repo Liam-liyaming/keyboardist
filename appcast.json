@@ -1,7 +1,7 @@
 {
-  "version": "0.4.26",
-  "build": 28,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.26.dmg",
-  "notes": "release: v0.4.25 (build 27)",
+  "version": "0.4.27",
+  "build": 29,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.27.dmg",
+  "notes": "焦点元素获取增加 App 级回退（微信等不响应系统级查询的 App）",
   "releasedAt": "2026-11-25"
 }

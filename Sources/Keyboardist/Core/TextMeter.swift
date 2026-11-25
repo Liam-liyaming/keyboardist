@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import ApplicationServices
 
 /// 采集层 · 第二把钥匙：精准字数。
@@ -120,16 +121,7 @@ final class TextMeter {
     func enterContext() -> (composing: Bool, textFocused: Bool) {
         guard !KeyCapture.isSecureInputEnabled() else { return (true, false) }
 
-        let system = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(system, 0.03)
-
-        var focusedRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
-              let focusedRef,
-              CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
-        else { return (false, false) }
-
-        let element = focusedRef as! AXUIElement
+        guard let element = focusedElement() else { return (false, false) }
 
         var roleRef: CFTypeRef?
         var role = ""
@@ -139,6 +131,28 @@ final class TextMeter {
         }
 
         return (isComposing(element), isTextTarget(element, role))
+    }
+
+    /// 焦点元素。先走系统级查询，失败再问前端 App 自己。
+    /// 微信这类 App 不响应系统级 AXFocusedUIElement，但 App 级查询能拿到。
+    private func focusedElement() -> AXUIElement? {
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.03)
+        var ref: CFTypeRef?
+        if AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &ref) == .success,
+           let ref, CFGetTypeID(ref) == AXUIElementGetTypeID() {
+            return (ref as! AXUIElement)
+        }
+
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(appElement, 0.03)
+        var appRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &appRef) == .success,
+           let appRef, CFGetTypeID(appRef) == AXUIElementGetTypeID() {
+            return (appRef as! AXUIElement)
+        }
+        return nil
     }
 
     /// 是不是「可以打字的控件」。多重判定：角色白名单 → 可编辑属性 → 角色名含 Text。
@@ -158,13 +172,9 @@ final class TextMeter {
 
     /// 诊断用：当前焦点元素的角色名
     func focusedRole() -> String {
-        let system = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(system, 0.03)
-        var focusedRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
-              let focusedRef, CFGetTypeID(focusedRef) == AXUIElementGetTypeID() else { return "none" }
+        guard let element = focusedElement() else { return "none" }
         var roleRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(focusedRef as! AXUIElement, kAXRoleAttribute as CFString, &roleRef) == .success,
+        guard AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
               let roleRef, let role = roleRef as? String else { return "unknown" }
         return role
     }
@@ -181,17 +191,7 @@ final class TextMeter {
     func probeLength() -> LengthProbe {
         guard !KeyCapture.isSecureInputEnabled() else { return .notTextTarget }
 
-        let system = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(system, 0.03)
-
-        var focusedRef: CFTypeRef?
-        let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef)
-        guard status == .success,
-              let focusedRef,
-              CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
-        else { return .notTextTarget }
-
-        let element = focusedRef as! AXUIElement
+        guard let element = focusedElement() else { return .notTextTarget }
 
         var roleRef: CFTypeRef?
         var role = ""
