@@ -11,6 +11,14 @@ import AppKit
 ///   第 i 环中心 i-1.5，高斯权重 exp(-((x-c)/0.8)^2)
 ///   alpha = strength * exp(-1.1 * (x/2)^2)
 ///   R = startR + growth * (1 - 2^(-k t)) / (1 - 2^(-k))
+/// 无边框窗口默认会被 AppKit 约束在主屏可见区域内。
+/// 冲击波要盖在外接屏/笔记本屏的完整区域上（坐标可能是负的），必须取消这个约束。
+final class HaloWindow: NSWindow {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+        frameRect
+    }
+}
+
 final class HaloOverlay {
     private var window: NSWindow?
     private var ringView: HaloView?
@@ -91,7 +99,7 @@ final class HaloOverlay {
         teardown()
 
         let frame = screen.frame
-        let w = NSWindow(contentRect: frame,
+        let w = HaloWindow(contentRect: frame,
                          styleMask: [.borderless],
                          backing: .buffered,
                          defer: false,
@@ -125,8 +133,10 @@ final class HaloOverlay {
             ringView = v
         }
 
+        w.setFrame(frame, display: true)
         window = w
         w.orderFrontRegardless()
+        HaloOverlay.log("window frame=\(Int(w.frame.minX)),\(Int(w.frame.minY)) \(Int(w.frame.width))x\(Int(w.frame.height))  want=\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height))")
         startTimer()
     }
 
