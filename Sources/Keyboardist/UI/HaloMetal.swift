@@ -229,6 +229,16 @@ final class HaloMetalView: NSView {
 
     // MARK: - 渲染
 
+    /// 复用已有视图：只换纹理，不重建管线/设备/图层
+    func update(with captured: CapturedFrame) {
+        loadTexture(captured.image)
+        loadMask(captured.mask)
+    }
+
+    func restart() {
+        startAt = CACurrentMediaTime()
+    }
+
     func start() {
         startAt = CACurrentMediaTime()
     }

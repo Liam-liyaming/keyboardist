@@ -1,7 +1,7 @@
 {
-  "version": "0.4.23",
-  "build": 25,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.23.dmg",
-  "notes": "截帧与判定并行；密集轮询输入框",
+  "version": "0.4.24",
+  "build": 26,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.24.dmg",
+  "notes": "冲击波窗口与 Metal 视图常驻复用",
   "releasedAt": "2026-11-25"
 }

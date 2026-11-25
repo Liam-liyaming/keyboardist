@@ -124,7 +124,21 @@ final class HaloOverlay {
     }
 
     private func present(screen: NSScreen, frame captured: CapturedFrame?) {
-        teardown()
+        // 窗口和 Metal 视图常驻复用：每次只换纹理，省掉建窗口/建设备的几十毫秒
+        if let existing = window, let mv = metalView, existing.frame == screen.frame, let captured {
+            window?.orderFrontRegardless()
+            mv.update(with: captured)
+            let p = HaloOverlay.preset
+            mv.pushScale = p.push * 11
+            mv.alphaScale = p.alpha
+            mv.duration = p.duration
+            mv.restart()
+            startTimer()
+            HaloOverlay.log(String(format: "latency %.0f ms (回车→出光, 复用窗口)", (CACurrentMediaTime() - pendingAt) * 1000))
+            return
+        }
+
+        teardown(release: true)
 
         let frame = screen.frame
         let w = HaloWindow(contentRect: frame,
@@ -181,24 +195,26 @@ final class HaloOverlay {
     private func tick() {
         if let mv = metalView {
             mv.renderFrame()
-            if mv.isFinished { teardown() }
+            if mv.isFinished { teardown(release: false) }
             return
         }
         if let rv = ringView {
             let progress = min(1, max(0, (CACurrentMediaTime() - fallbackStart) / duration))
             rv.progress = progress
             rv.needsDisplay = true
-            if progress >= 1 { teardown() }
+            if progress >= 1 { teardown(release: false) }
         }
     }
 
-    private func teardown() {
+    private func teardown(release: Bool = false) {
         timer?.invalidate()
         timer = nil
         window?.orderOut(nil)
-        window = nil
-        ringView = nil
-        metalView = nil
+        if release {
+            window = nil
+            ringView = nil
+            metalView = nil
+        }
         isRunning = false
     }
 }
