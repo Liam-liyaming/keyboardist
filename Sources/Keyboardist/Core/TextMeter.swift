@@ -115,6 +115,35 @@ final class TextMeter {
         }
     }
 
+    /// 回车时的一次性判定：此刻是不是在「文本控件里」、以及「是否组合中」。
+    /// 只查一次 AX，避免回车链路上两次往返。
+    func enterContext() -> (composing: Bool, textFocused: Bool) {
+        guard !KeyCapture.isSecureInputEnabled() else { return (true, false) }
+
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.03)
+
+        var focusedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
+              let focusedRef,
+              CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
+        else { return (false, false) }
+
+        let element = focusedRef as! AXUIElement
+
+        var roleRef: CFTypeRef?
+        var role = ""
+        if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
+           let roleRef, let value = roleRef as? String {
+            role = value
+        }
+
+        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
+        let textFocused = textRoles.contains(role)
+
+        return (isComposing(element), textFocused)
+    }
+
     /// 此刻焦点控件是否处于输入法组合态（回车此时是「上屏」，不是「提交」）
     func isComposingNow() -> Bool {
         guard !KeyCapture.isSecureInputEnabled() else { return true }

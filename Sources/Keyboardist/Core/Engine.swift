@@ -129,9 +129,13 @@ final class Engine {
         //
         // 必须**同步**判断：异步查的时候按键已经被应用处理完，组合态已经结束了。
         if code == 36 {
-            let composing = meter.lastComposing || meter.isComposingNow()
+            let context = meter.enterContext()
+            let composing = context.composing || meter.lastComposing
+
             if composing {
                 HaloOverlay.log("enter skipped: composing")
+            } else if !context.textFocused {
+                HaloOverlay.log("enter skipped: no text field")
             } else {
                 DispatchQueue.main.async { [weak self] in
                     self?.onEnter?()

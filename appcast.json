@@ -1,7 +1,7 @@
 {
-  "version": "0.4.11",
-  "build": 13,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.11.dmg",
-  "notes": "中文输入法里回车确认英文时不再触发射击波",
+  "version": "0.4.12",
+  "build": 14,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.12.dmg",
+  "notes": "回车只在文本输入框里触发冲击波",
   "releasedAt": "2026-11-25"
 }
