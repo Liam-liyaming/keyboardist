@@ -144,6 +144,23 @@ final class TextMeter {
         return (isComposing(element), textFocused)
     }
 
+    /// 当前焦点控件的字符数；没有文本控件时返回 nil。
+    /// 只取长度，不取内容。
+    func currentLength() -> Int? {
+        guard !KeyCapture.isSecureInputEnabled() else { return nil }
+
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.03)
+
+        var focusedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
+              let focusedRef,
+              CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
+        else { return nil }
+
+        return readLength(focusedRef as! AXUIElement)
+    }
+
     /// 此刻焦点控件是否处于输入法组合态（回车此时是「上屏」，不是「提交」）
     func isComposingNow() -> Bool {
         guard !KeyCapture.isSecureInputEnabled() else { return true }
