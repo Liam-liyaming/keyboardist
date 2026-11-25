@@ -26,6 +26,9 @@ final class HaloOverlay {
     private var timer: Timer?
 
     private var isRunning = false
+    private var pendingCapture: Task<CapturedFrame?, Never>?
+    private var pendingScreen: NSScreen?
+    private var pendingAt: CFTimeInterval = 0
     private var fallbackStart: CFTimeInterval = -1
 
     /// 每次触发的诊断日志：写 ~/Library/Application Support/Keyboardist/halo.log
@@ -74,6 +77,30 @@ final class HaloOverlay {
 
     /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
     /// 抓帧失败（没有屏幕录制权限）就退回只有色环的降级版。
+    /// 回车按下的瞬间就开抓，和「判是不是真提交」并行，
+    /// 这样截帧的 50~160ms 被判定窗口盖住，不用叠加。
+    func prepare() {
+        guard !isRunning else { return }
+        let target = ActiveWindow.caretScreen()
+        pendingScreen = target.screen
+        pendingAt = CACurrentMediaTime()
+        pendingCapture = Task { await ScreenShot.capture(screen: target.screen) }
+    }
+
+    /// 判定为「真的提交」后调用：用已经抓好（或正在抓）的那一帧出光。
+    func commit() {
+        guard !isRunning, let screen = pendingScreen, let task = pendingCapture else { return }
+        isRunning = true
+        pendingCapture = nil
+
+        Task {
+            let frame = await task.value
+            await MainActor.run {
+                self.present(screen: screen, frame: frame)
+            }
+        }
+    }
+
     func trigger() {
         // 只挡「动画真的还在跑」这一种情况。
         // 早先用「上次结束 + 0.4 + 冷却」做闸门，等于每次触发后约 1.7 秒内的回车全被吞掉，
@@ -137,6 +164,7 @@ final class HaloOverlay {
         w.setFrame(frame, display: true)
         window = w
         w.orderFrontRegardless()
+        HaloOverlay.log(String(format: "latency %.0f ms (回车→出光)", (CACurrentMediaTime() - pendingAt) * 1000))
         HaloOverlay.log("window frame=\(Int(w.frame.minX)),\(Int(w.frame.minY)) \(Int(w.frame.width))x\(Int(w.frame.height))  want=\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height))")
         startTimer()
     }

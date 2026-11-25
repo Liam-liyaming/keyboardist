@@ -14,8 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         engine.onChange = { [weak self] in
             self?.menuBar?.refresh()
         }
+        engine.onEnterPrepare = { [weak self] in
+            self?.halo.prepare()
+        }
         engine.onEnter = { [weak self] in
-            self?.halo.trigger()
+            self?.halo.commit()
         }
 
         menuBar = MenuBarController(engine: engine, glow: glow)

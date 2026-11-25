@@ -13,6 +13,8 @@ final class Engine {
 
     /// 回车（keyCode 36）：交给冲击波
     var onEnter: (() -> Void)?
+    /// 回车按下瞬间就调用，用来启动截帧（和判定并行）
+    var onEnterPrepare: (() -> Void)?
 
     private var recentKeys: [Double] = []
     private var lastKeyAt: Double = 0
@@ -145,6 +147,9 @@ final class Engine {
             } else if !context.textFocused {
                 HaloOverlay.log("enter skipped: no text field  \(tag)")
             } else {
+                // 判据开始之前就把截帧发出去，省的把截帧时间叠在判定后面
+                onEnterPrepare?()
+
                 // 判据：「输入框被清空」才算提交。
                 //
                 // 不能用「长度变少」——拼音上屏本身就会变短：
@@ -155,7 +160,7 @@ final class Engine {
                 // 也不再有「回车前不是字母就立即放」的快速路径：
                 // 那条路绕过了验证，是输入法确认被误触发的入口。
                 let before = meter.probeLength()
-                let probeTimes: [Double] = [0.06, 0.20, 0.40]   // 依次观察，越慢的 App 也能等到清空
+                let probeTimes: [Double] = [0.03, 0.06, 0.10, 0.16, 0.24, 0.40]   // 密集观察，多半在 30ms 内就等到清空
                 Engine.watchForEmpty(meter: meter,
                                      before: before,
                                      times: probeTimes,

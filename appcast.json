@@ -1,7 +1,7 @@
 {
-  "version": "0.4.22",
-  "build": 24,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.22.dmg",
-  "notes": "冲击波按输入焦点所在屏幕定位，不再按最前窗口",
+  "version": "0.4.23",
+  "build": 25,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.23.dmg",
+  "notes": "截帧与判定并行；密集轮询输入框",
   "releasedAt": "2026-11-25"
 }
