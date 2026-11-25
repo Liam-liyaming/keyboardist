@@ -77,6 +77,27 @@ final class HaloOverlay {
 
     /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
     /// 抓帧失败（没有屏幕录制权限）就退回只有色环的降级版。
+    /// 启动时把窗口悄悄建好（不显示），首次回车也能走复用路径
+    func warmUp() {
+        guard window == nil, !isRunning else { return }
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let frame = screen.frame
+        guard let mv = HaloMetalView(placeholderFrame: NSRect(origin: .zero, size: frame.size)) else { return }
+
+        let w = HaloWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
+        w.isOpaque = false
+        w.backgroundColor = .clear
+        w.hasShadow = false
+        w.ignoresMouseEvents = true
+        w.isReleasedWhenClosed = false
+        w.level = .screenSaver
+        w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        w.contentView = mv
+        w.setFrame(frame, display: false)
+        window = w
+        metalView = mv
+    }
+
     /// 回车按下的瞬间就开抓，和「判是不是真提交」并行，
     /// 这样截帧的 50~160ms 被判定窗口盖住，不用叠加。
     func prepare() {

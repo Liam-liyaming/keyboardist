@@ -146,6 +146,17 @@ final class HaloMetalView: NSView {
     var alphaScale: Float = 1.0
     var duration: CFTimeInterval = 1.15
 
+    convenience init?(placeholderFrame: NSRect) {
+        self.init(frame: placeholderFrame, frame: CapturedFrame(image: HaloMetalView.blankImage, mask: nil))
+    }
+
+    static var blankImage: CGImage {
+        let ctx = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                            space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        return ctx.makeImage()!
+    }
+
     init?(frame: NSRect, frame captured: CapturedFrame) {
         device = MTLCreateSystemDefaultDevice()
         guard let device else { return nil }
