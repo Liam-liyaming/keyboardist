@@ -1,7 +1,7 @@
 {
-  "version": "0.4.16",
-  "build": 18,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.16.dmg",
-  "notes": "管线预热消卡顿、回车不等非字母后的键、反光加强",
+  "version": "0.4.17",
+  "build": 19,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.17.dmg",
+  "notes": "回车日志带上 App 名与上一个键",
   "releasedAt": "2026-11-25"
 }

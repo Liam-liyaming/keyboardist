@@ -135,13 +135,15 @@ final class Engine {
         //
         // 必须**同步**判断：异步查的时候按键已经被应用处理完，组合态已经结束了。
         if code == 36 {
+            let appName = ActiveWindow.frontmostApp()?.name ?? "?"
+            let tag = "app=\(appName) prevKey=\(previousKeyCode)"
             let context = meter.enterContext()
             let composing = context.composing || meter.lastComposing
 
             if composing {
-                HaloOverlay.log("enter skipped: composing")
+                HaloOverlay.log("enter skipped: composing  \(tag)")
             } else if !context.textFocused {
-                HaloOverlay.log("enter skipped: no text field")
+                HaloOverlay.log("enter skipped: no text field  \(tag)")
             } else {
                 // 不靠时序猜，每次回车都验证「有没有真的提交」：
                 //   输入框变少 / 焦点离开 → 提交，放光环
@@ -154,7 +156,7 @@ final class Engine {
                 let mayBeComposing = Engine.letterKeyCodes.contains(previousKeyCode)
 
                 if !mayBeComposing {
-                    HaloOverlay.log("enter immediate (prev key not a letter)")
+                    HaloOverlay.log("enter immediate (prev key not a letter)  \(tag)")
                     DispatchQueue.main.async { [weak self] in self?.onEnter?() }
                     return
                 }
@@ -168,18 +170,18 @@ final class Engine {
 
                     switch after {
                     case .notTextTarget:
-                        HaloOverlay.log("enter verified: left the field (before=\(beforeText))")
+                        HaloOverlay.log("enter verified: left the field (before=\(beforeText))  \(tag)")
                         self.onEnter?()
                     case .length(let now):
                         if case .length(let was) = before, now < was {
-                            HaloOverlay.log("enter verified: cleared \(beforeText) → \(afterText)")
+                            HaloOverlay.log("enter verified: cleared \(beforeText) → \(afterText)  \(tag)")
                             self.onEnter?()
                         } else {
-                            HaloOverlay.log("enter skipped: text kept or grew \(beforeText) → \(afterText)")
+                            HaloOverlay.log("enter skipped: text kept or grew \(beforeText) → \(afterText)  \(tag)")
                         }
                     case .failed:
                         // 读不到不等于没提交，宁可少放一次也不误放
-                        HaloOverlay.log("enter skipped: probe failed (before=\(beforeText))")
+                        HaloOverlay.log("enter skipped: probe failed (before=\(beforeText))  \(tag)")
                     }
                 }
             }
