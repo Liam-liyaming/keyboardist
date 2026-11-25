@@ -1,7 +1,7 @@
 {
-  "version": "0.4.10",
-  "build": 12,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.10.dmg",
-  "notes": "验证更新链路：公共更新源已生效",
-  "releasedAt": "2026-11-24"
+  "version": "0.4.11",
+  "build": 13,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.11.dmg",
+  "notes": "中文输入法里回车确认英文时不再触发射击波",
+  "releasedAt": "2026-11-25"
 }

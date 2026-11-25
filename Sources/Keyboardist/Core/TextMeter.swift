@@ -13,8 +13,8 @@ import ApplicationServices
 ///   * 检测组合态（选区长 > 0）时不采样
 ///   * 上屏后从「组合前基线」一次性结算
 final class TextMeter {
-    /// (新增字数, 删除字数)
-    var onText: ((Int, Int) -> Void)?
+    /// (新增字数, 删除字数, 焦点应用 pid)
+    var onText: ((Int, Int, pid_t) -> Void)?
 
     private var timer: Timer?
     private var baseline: Int = -1
@@ -23,6 +23,8 @@ final class TextMeter {
     private var kicked: Set<pid_t> = []
 
     private(set) var lastHitRate: Double = 0
+    /// 最近一次采样时是否处于输入法组合态（用于回车判定）
+    private(set) var lastComposing: Bool = false
     private var reads = 0
     private var hits = 0
 
@@ -75,6 +77,7 @@ final class TextMeter {
         lastHitRate = Double(hits) / Double(max(reads, 1))
 
         let composing = isComposing(element)
+        lastComposing = composing
         if composing {
             wasComposing = true
             return                      // 组合期间不动基线，等上屏
@@ -99,14 +102,14 @@ final class TextMeter {
 
         let delta = len - baseline
         if delta > 0 {
-            onText?(delta, 0)
+            onText?(delta, 0, pid)
             baseline = len
         } else if delta < 0 {
             if len == 0 {
                 // 输入框被清空 / 焦点换到空控件，不是用户删了这么多
                 baseline = len
             } else {
-                onText?(0, -delta)
+                onText?(0, -delta, pid)
                 baseline = len
             }
         }
@@ -117,7 +120,7 @@ final class TextMeter {
         guard !KeyCapture.isSecureInputEnabled() else { return true }
 
         let system = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(system, 0.05)
+        AXUIElementSetMessagingTimeout(system, 0.03)
 
         var focusedRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,

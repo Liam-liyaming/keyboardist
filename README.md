@@ -2,7 +2,7 @@
 
 > 监听打字，把每一次敲击变成屏幕底部的辉光；一天结束时，把今天的输入写成一首歌。
 
-当前版本 **v0.2（M2 完成）**：全局采集 + 精准字数 + 屏幕底部实时辉光 + 菜单栏今日画像 + **每日之歌**。
+当前版本 **v0.2（M2 完成）**：全局采集 + 精准字数 + 分应用字数统计 + 屏幕底部实时辉光 + 菜单栏今日画像 + **每日之歌**。
 
 ## 效果
 
@@ -64,7 +64,7 @@ codesign -d -r- "dist/键盘手.app"
 | `Core/TextMeter.swift` | AX 精准字数，中文 IME 组合态处理 |
 | `Core/Engine.swift` | 会话切分、速度归一化、持久化节流 |
 | `Core/KeyLayout.swift` | 键盘物理位置 → 横向坐标 / 八度 |
-| `Core/ActiveWindow.swift` | 前台窗口定位：分屏/多显示器时辉光跟随 |
+| `Core/ActiveWindow.swift` | 前台窗口/应用定位：分屏/多显示器时辉光跟随 + 分应用字数归属 |
 | `Core/Store.swift` | 一天一个 JSON，只存整数 |
 | `UI/GlowOverlay.swift` | 透明置顶穿透窗口 + CoreGraphics 辉光 |
 | `UI/MenuBar.swift` | 菜单栏今日画像 |
@@ -152,7 +152,8 @@ codesign -d -r- "dist/键盘手.app"
   "deletions": 41,
   "sessions": [{ "start": "...", "end": "...", "keystrokes": 210, "chars": 118 }],
   "minuteKeys": { "17:12": 96 },
-  "keyCodes": { "0": 210, "1": 180 }
+  "keyCodes": { "0": 210, "1": 180 },
+  "apps": { "com.apple.dt.Xcode": { "name": "Xcode", "keystrokes": 900, "chars": 520, "deletions": 18 } }
 }
 ```
 
@@ -162,6 +163,7 @@ codesign -d -r- "dist/键盘手.app"
 
 - 不链接任何网络框架，运行时零请求
 - 只读 `kAXNumberOfCharacters` 或 `CFStringGetLength`，不取字符
+- 分应用统计只存「应用名 + 整数」，不存输入内容
 - 密码框等安全输入（`IsSecureEventInputEnabled`）自动停止统计
 - 菜单栏可随时「暂停记录」
 

@@ -57,6 +57,28 @@ enum ActiveWindow {
         )
     }
 
+    // MARK: - 前台应用身份（分应用字数统计用）
+
+    /// 前台应用身份：稳定标识（bundleIdentifier，回退到显示名）与显示名。
+    /// 排除自己，避免把键盘手自身的菜单/弹窗统计进去。
+    static func frontmostApp() -> (id: String, name: String)? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        if app.processIdentifier == ProcessInfo.processInfo.processIdentifier { return nil }
+        return identity(of: app)
+    }
+
+    /// 由进程 pid 解析应用身份（把字数归属到焦点控件所在的应用）。
+    static func appIdentity(for pid: Int32) -> (id: String, name: String)? {
+        guard let app = NSRunningApplication(processIdentifier: pid) else { return nil }
+        return identity(of: app)
+    }
+
+    private static func identity(of app: NSRunningApplication) -> (id: String, name: String) {
+        let name = app.localizedName ?? app.bundleIdentifier ?? "pid-\(app.processIdentifier)"
+        let id = app.bundleIdentifier ?? name
+        return (id, name)
+    }
+
     /// CG（左上原点）→ AppKit（左下原点）
     static func toAppKit(_ cgRect: CGRect) -> CGRect {
         guard let primary = primaryScreen else { return cgRect }

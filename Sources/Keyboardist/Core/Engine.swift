@@ -53,8 +53,8 @@ final class Engine {
         capture.onKey = { [weak self] code in self?.handleKey(code) }
         capture.start()
 
-        meter.onText = { [weak self] added, removed in
-            self?.handleText(added: added, removed: removed)
+        meter.onText = { [weak self] added, removed, pid in
+            self?.handleText(added: added, removed: removed, pid: pid)
         }
         meter.start()
 
@@ -106,34 +106,55 @@ final class Engine {
         sessionKeys += 1
 
         let minute = Engine.minuteKey(date)
+        let app = ActiveWindow.frontmostApp()
         store.mutate { r in
             r.keystrokes += 1
             if r.firstAt == nil { r.firstAt = date }
             r.lastAt = date
             r.minuteKeys[minute, default: 0] += 1
             r.keyCodes[String(code), default: 0] += 1
+            if let app {
+                var stat = r.apps[app.id] ?? AppStat(name: app.name)
+                stat.name = app.name
+                stat.keystrokes += 1
+                r.apps[app.id] = stat
+            }
         }
 
         onKey?(code, speed)
         scheduleSave()
 
-        // 回车 = 提交。输入法组合中时回车是「上屏」，不能算提交。
+        // 回车 = 提交。但如果此刻输入法正在组合（比如中文输入法里打英文、按回车确认原文），
+        // 这个回车是「上屏」，不是「提交」。
+        //
+        // 必须**同步**判断：异步查的时候按键已经被应用处理完，组合态已经结束了。
         if code == 36 {
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !self.meter.isComposingNow() else { return }
-                self.onEnter?()
+            let composing = meter.lastComposing || meter.isComposingNow()
+            if composing {
+                HaloOverlay.log("enter skipped: composing")
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onEnter?()
+                }
             }
         }
     }
 
     // MARK: - 字数
 
-    private func handleText(added: Int, removed: Int) {
+    private func handleText(added: Int, removed: Int, pid: Int32) {
         guard !isPaused, added > 0 || removed > 0 else { return }
         if added > 0 { sessionChars += added }
         store.mutate { r in
             r.chars += added
             r.deletions += removed
+            if let app = ActiveWindow.appIdentity(for: pid) {
+                var stat = r.apps[app.id] ?? AppStat(name: app.name)
+                stat.name = app.name
+                stat.chars += added
+                stat.deletions += removed
+                r.apps[app.id] = stat
+            }
         }
         scheduleSave()
     }

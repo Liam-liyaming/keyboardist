@@ -10,6 +10,7 @@ final class MenuBarController: NSObject {
     private var keysItem: NSMenuItem!
     private var sessionItem: NSMenuItem!
     private var appItem: NSMenuItem!
+    private var appsRootItem: NSMenuItem!
     private var songItem: NSMenuItem!
     private var screenItem: NSMenuItem!
     private var activeApp: String = "-"
@@ -61,6 +62,8 @@ final class MenuBarController: NSObject {
         sessionItem.isEnabled = false
         appItem = NSMenuItem(title: "辉光跟随：-", action: nil, keyEquivalent: "")
         appItem.isEnabled = false
+        appsRootItem = NSMenuItem(title: "输入分布", action: nil, keyEquivalent: "")
+        appsRootItem.submenu = NSMenu()
         songItem = NSMenuItem(title: "生成今日之歌…", action: #selector(renderSong), keyEquivalent: "g")
         songItem.target = self
 
@@ -68,6 +71,7 @@ final class MenuBarController: NSObject {
         menu.addItem(keysItem)
         menu.addItem(sessionItem)
         menu.addItem(appItem)
+        menu.addItem(appsRootItem)
         menu.addItem(.separator())
         menu.addItem(songItem)
 
@@ -120,6 +124,7 @@ final class MenuBarController: NSObject {
         keysItem?.title = "速度 \(engine.recentCPM) 击键/分 · 峰值 \(engine.peakCPM)"
         sessionItem?.title = "会话 \(r.sessions.count) 段 · 有效输入 \(Int(r.efficiency * 100))%"
         appItem?.title = "辉光跟随：\(activeApp)"
+        rebuildAppsMenu()
 
         glowItem?.state = glow.isEnabled ? .on : .off
         pauseItem?.state = engine.isPaused ? .on : .off
@@ -129,6 +134,25 @@ final class MenuBarController: NSObject {
         guard name != activeApp else { return }
         activeApp = name
         refresh()
+    }
+
+    private func rebuildAppsMenu() {
+        guard let menu = appsRootItem?.submenu else { return }
+        menu.removeAllItems()
+
+        let apps = engine.record.apps.values.sorted { $0.chars > $1.chars }
+        if apps.isEmpty {
+            let empty = NSMenuItem(title: "暂无数据", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            menu.addItem(empty)
+            return
+        }
+        for stat in apps {
+            let title = "\(stat.name) · \(MenuBarController.grouped(stat.chars)) 字 · 击键 \(MenuBarController.grouped(stat.keystrokes))"
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        }
     }
 
     @objc private func renderSong() {
@@ -275,7 +299,7 @@ final class MenuBarController: NSObject {
         let alert = NSAlert()
         alert.messageText = "键盘手只记录整数"
         alert.informativeText = """
-        本应用只统计：击键次数、字数、时间戳、会话长度。
+        本应用只统计：击键次数、字数、时间戳、会话长度，以及每个应用的输入字数。
         不记录任何输入内容，不上传任何数据，不连接网络。
 
         数据保存在：
