@@ -26,6 +26,8 @@ final class TextMeter {
     private(set) var lastHitRate: Double = 0
     /// 最近一次采样时是否处于输入法组合态（用于回车判定）
     private(set) var lastComposing: Bool = false
+    /// 上次采样到组合态的是哪个 App（避免切换 App 后用到旧状态）
+    private(set) var lastComposingApp: String?
     private var reads = 0
     private var hits = 0
 
@@ -79,6 +81,7 @@ final class TextMeter {
 
         let composing = isComposing(element)
         lastComposing = composing
+        lastComposingApp = ActiveWindow.frontmostApp()?.name
         if composing {
             wasComposing = true
             return                      // 组合期间不动基线，等上屏
@@ -118,10 +121,10 @@ final class TextMeter {
 
     /// 回车时的一次性判定：此刻是不是在「文本控件里」、以及「是否组合中」。
     /// 只查一次 AX，避免回车链路上两次往返。
-    func enterContext() -> (composing: Bool, textFocused: Bool) {
-        guard !KeyCapture.isSecureInputEnabled() else { return (true, false) }
+    func enterContext() -> (composing: Bool, textFocused: Bool, hasFocus: Bool) {
+        guard !KeyCapture.isSecureInputEnabled() else { return (true, false, true) }
 
-        guard let element = focusedElement() else { return (false, false) }
+        guard let element = focusedElement() else { return (false, false, false) }
 
         var roleRef: CFTypeRef?
         var role = ""
@@ -130,7 +133,7 @@ final class TextMeter {
             role = value
         }
 
-        return (isComposing(element), isTextTarget(element, role))
+        return (isComposing(element), isTextTarget(element, role), true)
     }
 
     /// 焦点元素。先走系统级查询，失败再问前端 App 自己。

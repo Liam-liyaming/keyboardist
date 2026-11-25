@@ -1,7 +1,7 @@
 {
-  "version": "0.4.27",
-  "build": 29,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.27.dmg",
-  "notes": "焦点元素获取增加 App 级回退（微信等不响应系统级查询的 App）",
+  "version": "0.4.28",
+  "build": 30,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.28.dmg",
+  "notes": "无 AX 焦点的 App（微信）按提交处理；修复组合态跨 App 残留",
   "releasedAt": "2026-11-25"
 }

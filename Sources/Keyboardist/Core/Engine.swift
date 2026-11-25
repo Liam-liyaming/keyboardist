@@ -140,13 +140,24 @@ final class Engine {
             let appName = ActiveWindow.frontmostApp()?.name ?? "?"
             let tag = "app=\(appName) prevKey=\(previousKeyCode)"
             let context = meter.enterContext()
-            let composing = context.composing || meter.lastComposing
+            // 组合态必须和当前 App 对得上，否则是上一个 App 的残留
+            let staleOK = meter.lastComposingApp == appName
+            let composing = context.composing || (staleOK && meter.lastComposing)
 
             if composing {
                 HaloOverlay.log("enter skipped: composing  \(tag)")
-            } else if !context.textFocused {
+            } else if context.hasFocus && !context.textFocused {
                 HaloOverlay.log("enter skipped: no text field role=\(meter.focusedRole())  \(tag)")
             } else {
+                // 完全读不到焦点（微信这类不响应 AX 的 App）：无法验证，按提交处理。
+                // 代价是这类 App 里任何回车都会出光，但总比主流聊天软件里完全没反应好。
+                if !context.hasFocus {
+                    onEnterPrepare?()
+                    HaloOverlay.log("enter: no AX focus, assume submit  \(tag)")
+                    DispatchQueue.main.async { [weak self] in self?.onEnter?() }
+                    return
+                }
+
                 // 判据开始之前就把截帧发出去，省的把截帧时间叠在判定后面
                 onEnterPrepare?()
 
