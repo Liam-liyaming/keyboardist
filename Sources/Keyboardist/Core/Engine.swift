@@ -58,6 +58,10 @@ final class Engine {
         capture.onKey = { [weak self] code in self?.handleKey(code) }
         capture.start()
 
+        meter.hadRecentKey = { [weak self] in
+            guard let self else { return false }
+            return CFAbsoluteTimeGetCurrent() - self.lastKeyAt < 0.6
+        }
         meter.onText = { [weak self] added, removed, pid in
             self?.handleText(added: added, removed: removed, pid: pid)
         }

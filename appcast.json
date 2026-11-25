@@ -1,7 +1,7 @@
 {
-  "version": "0.4.28",
-  "build": 30,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.28.dmg",
-  "notes": "无 AX 焦点的 App（微信）按提交处理；修复组合态跨 App 残留",
+  "version": "0.4.29",
+  "build": 31,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.29.dmg",
+  "notes": "字数改为净值显示；丢弃焦点跳变与非按键增长",
   "releasedAt": "2026-11-25"
 }

@@ -140,7 +140,7 @@ final class MenuBarController: NSObject {
         guard let menu = appsRootItem?.submenu else { return }
         menu.removeAllItems()
 
-        let apps = engine.record.apps.values.sorted { $0.chars > $1.chars }
+        let apps = engine.record.apps.values.sorted { ($0.chars - $0.deletions) > ($1.chars - $1.deletions) }
         if apps.isEmpty {
             let empty = NSMenuItem(title: "暂无数据", action: nil, keyEquivalent: "")
             empty.isEnabled = false
@@ -148,7 +148,8 @@ final class MenuBarController: NSObject {
             return
         }
         for stat in apps {
-            let title = "\(stat.name) · \(MenuBarController.grouped(stat.chars)) 字 · 击键 \(MenuBarController.grouped(stat.keystrokes))"
+            let net = max(0, stat.chars - stat.deletions)
+            let title = "\(stat.name) · \(MenuBarController.grouped(net)) 字 · 击键 \(MenuBarController.grouped(stat.keystrokes))"
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             item.isEnabled = false
             menu.addItem(item)

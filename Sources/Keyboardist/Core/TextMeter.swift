@@ -16,6 +16,8 @@ import ApplicationServices
 final class TextMeter {
     /// (新增字数, 删除字数, 焦点应用 pid)
     var onText: ((Int, Int, pid_t) -> Void)?
+    /// 最近是否有按键（排除终端滚屏、程序自己改文本这类非输入增长）
+    var hadRecentKey: (() -> Bool)?
 
     private var timer: Timer?
     private var baseline: Int = -1
@@ -105,7 +107,20 @@ final class TextMeter {
         }
 
         let delta = len - baseline
+
+        // 一次采样最多 0.35 秒，人类不可能打出 200 个字符。
+        // 超过这个量级的跳变一定是「换了控件 / 加载了文档」，不是输入。
+        if abs(delta) > 200 {
+            baseline = len
+            return
+        }
+
         if delta > 0 {
+            // 没有按键却变长了：终端输出、程序自己改内容、粘贴，都不算打字
+            guard hadRecentKey?() ?? true else {
+                baseline = len
+                return
+            }
             onText?(delta, 0, pid)
             baseline = len
         } else if delta < 0 {
