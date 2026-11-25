@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         glow.start()
+        HaloMetalView.warmUp()   // 提前编译着色器，避免第一次回车卡顿
         engine.start()
 
         // 换 App 立刻跟随

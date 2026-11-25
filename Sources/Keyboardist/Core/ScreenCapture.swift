@@ -26,9 +26,15 @@ enum ScreenShot {
             return nil
         }
         if #available(macOS 14.0, *) {
+            let started = CACurrentMediaTime()
             guard let image = await captureModern(displayID: displayID) else { return nil }
+            let captured = CACurrentMediaTime()
+
             // 线条掩膜：只留长直线，用来做第 6 层「边线反光」
             let mask = LineMask.make(from: image)
+            let masked = CACurrentMediaTime()
+            HaloOverlay.log(String(format: "timing capture %.0f ms  mask %.0f ms",
+                                   (captured - started) * 1000, (masked - captured) * 1000))
             if let mask {
                 let hit = mask.pixels.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }
                 HaloOverlay.log("mask \(mask.width)x\(mask.height) coverage \(String(format: "%.2f", Double(hit) / Double(mask.pixels.count) * 100))%")

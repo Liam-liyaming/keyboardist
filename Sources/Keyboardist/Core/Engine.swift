@@ -17,6 +17,8 @@ final class Engine {
     private var recentKeys: [Double] = []
     private var lastKeyAt: Double = 0
     private var lastLetterAt: CFTimeInterval = 0
+    /// 上一个键，用来判断回车是不是紧跟在字母后面
+    private var lastKeyCode: Int64 = -1
 
     private var sessionStart: Date?
     private var lastKeyDate: Date?
@@ -85,6 +87,8 @@ final class Engine {
         store.rolloverIfNeeded()
 
         let now = CFAbsoluteTimeGetCurrent()
+        let previousKeyCode = lastKeyCode
+        lastKeyCode = code
         if Engine.letterKeyCodes.contains(code) { lastLetterAt = now }
         let interval = lastKeyAt > 0 ? now - lastKeyAt : 0.5
         lastKeyAt = now
@@ -145,8 +149,18 @@ final class Engine {
                 //
                 // 早先版本用「回车前 1.5 秒内有没有打字母」来决定要不要验证，
                 // 结果同样是敲英文，打得快就跳过、停顿一下就直接放行——按时间分叉是错的。
+                // 只有「回车前一个键是字母」才存在输入法确认英文的歧义，才需要等。
+                // 打完空格/标点/退格再回车，一定是提交，立刻放。
+                let mayBeComposing = Engine.letterKeyCodes.contains(previousKeyCode)
+
+                if !mayBeComposing {
+                    HaloOverlay.log("enter immediate (prev key not a letter)")
+                    DispatchQueue.main.async { [weak self] in self?.onEnter?() }
+                    return
+                }
+
                 let before = meter.probeLength()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                     guard let self else { return }
                     let after = self.meter.probeLength()
                     let beforeText = Engine.describe(before)

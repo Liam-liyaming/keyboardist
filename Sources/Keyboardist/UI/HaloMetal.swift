@@ -70,8 +70,8 @@ let haloShaderSource = """
 
             // 第 6 层：线条反光。在「弯折后」的位置取样，反光会跟着线走
             float gm = lmask.sample(smp, uv - offset).r;
-            float glint = strength * exp(-1.4 * pow(x / 2.0, 2.0)) * 0.16;
-            lit += mix(ring, float3(1.0), 0.2) * gm * glint;
+            float glint = strength * exp(-1.4 * pow(x / 2.0, 2.0)) * 0.24;
+            lit += mix(ring, float3(1.0), 0.35) * gm * glint;
 
             return float4(lit, 1.0);
         }
@@ -120,6 +120,28 @@ final class HaloMetalView: NSView {
     }
 
     /// 位移强度：由菜单里的「冲击波强度」决定
+    /// 运行时编译一次就够了，之后所有窗口复用。启动时在后台预热。
+    private static var cachedPipeline: MTLRenderPipelineState?
+
+    static func warmUp() {
+        guard cachedPipeline == nil,
+              let device = MTLCreateSystemDefaultDevice() else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let started = CACurrentMediaTime()
+            guard let library = try? device.makeLibrary(source: haloShaderSource, options: nil),
+                  let vfn = library.makeFunction(name: "v_main"),
+                  let ffn = library.makeFunction(name: "f_main") else { return }
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = vfn
+            desc.fragmentFunction = ffn
+            desc.colorAttachments[0].pixelFormat = .bgra8Unorm
+            if let state = try? device.makeRenderPipelineState(descriptor: desc) {
+                cachedPipeline = state
+                HaloOverlay.log(String(format: "pipeline prewarmed in %.0f ms", (CACurrentMediaTime() - started) * 1000))
+            }
+        }
+    }
+
     var pushScale: Float = 9.8
     var alphaScale: Float = 1.0
     var duration: CFTimeInterval = 1.15
@@ -157,17 +179,24 @@ final class HaloMetalView: NSView {
 
     private func buildPipeline() {
         guard let device else { return }
+        if let cached = HaloMetalView.cachedPipeline {
+            pipeline = cached
+            return
+        }
 
         let source = haloShaderSource
 
 
         do {
+            let started = CACurrentMediaTime()
             let library = try device.makeLibrary(source: source, options: nil)
             let desc = MTLRenderPipelineDescriptor()
             desc.vertexFunction = library.makeFunction(name: "v_main")
             desc.fragmentFunction = library.makeFunction(name: "f_main")
             desc.colorAttachments[0].pixelFormat = .bgra8Unorm
             pipeline = try device.makeRenderPipelineState(descriptor: desc)
+            HaloMetalView.cachedPipeline = pipeline
+            HaloOverlay.log(String(format: "pipeline compiled in %.0f ms", (CACurrentMediaTime() - started) * 1000))
         } catch {
             HaloOverlay.log("pipeline failed: \(error)")
             pipeline = nil
