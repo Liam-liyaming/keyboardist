@@ -17,7 +17,8 @@ final class HaloOverlay {
     private var metalView: HaloMetalView?
     private var timer: Timer?
 
-    private var lastEnd: CFTimeInterval = -1
+    private var isRunning = false
+    private var fallbackStart: CFTimeInterval = -1
 
     /// 每次触发的诊断日志：写 ~/Library/Application Support/Keyboardist/halo.log
     static func log(_ text: String) {
@@ -66,14 +67,17 @@ final class HaloOverlay {
     /// 按下回车时调用：先抓一帧，再用 Metal 把六层画出来。
     /// 抓帧失败（没有屏幕录制权限）就退回只有色环的降级版。
     func trigger() {
-        let now = CACurrentMediaTime()
-        guard now > lastEnd + cooldown else { return }
+        // 只挡「动画真的还在跑」这一种情况。
+        // 早先用「上次结束 + 0.4 + 冷却」做闸门，等于每次触发后约 1.7 秒内的回车全被吞掉，
+        // 聊天里连发两条就是必现。
+        guard !isRunning else {
+            HaloOverlay.log("trigger skipped: still running")
+            return
+        }
         guard let screen = ActiveWindow.glowTarget(height: 0)?.screen ?? NSScreen.main else { return }
 
+        isRunning = true
         HaloOverlay.log("trigger  screen=\(screen.localizedName)  screen-rec=\(ScreenShot.hasPermission())")
-
-        // 抓帧本身要几十毫秒，把闸门的结束时间往后推
-        lastEnd = now + duration + 0.4
 
         Task {
             let image = await ScreenShot.capture(screen: screen)
@@ -115,6 +119,7 @@ final class HaloOverlay {
             HaloOverlay.log("fallback: rings only")
             let v = HaloView(frame: NSRect(origin: .zero, size: frame.size))
             v.easeK = easeK
+            fallbackStart = CACurrentMediaTime()
             v.progress = 0
             w.contentView = v
             ringView = v
@@ -141,10 +146,7 @@ final class HaloOverlay {
             return
         }
         if let rv = ringView {
-            let t = CACurrentMediaTime()
-            // 降级版没有独立的起始时间，用闸门的结束时间倒推
-            let elapsed = duration - (lastEnd - 0.4 - t)
-            let progress = min(1, max(0, elapsed / duration))
+            let progress = min(1, max(0, (CACurrentMediaTime() - fallbackStart) / duration))
             rv.progress = progress
             rv.needsDisplay = true
             if progress >= 1 { teardown() }
@@ -158,6 +160,7 @@ final class HaloOverlay {
         window = nil
         ringView = nil
         metalView = nil
+        isRunning = false
     }
 }
 

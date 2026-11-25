@@ -1,7 +1,7 @@
 {
-  "version": "0.4.17",
-  "build": 19,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.17.dmg",
-  "notes": "回车日志带上 App 名与上一个键",
+  "version": "0.4.18",
+  "build": 20,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.18.dmg",
+  "notes": "触发闸门改为「动画是否在跑」，不再吞掉连发的回车",
   "releasedAt": "2026-11-25"
 }
