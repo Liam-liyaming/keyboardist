@@ -1,7 +1,7 @@
 {
-  "version": "0.4.13",
-  "build": 15,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.13.dmg",
-  "notes": "回车改为提交验证：输入法上屏不再触发",
+  "version": "0.4.14",
+  "build": 16,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.14.dmg",
+  "notes": "提交验证区分「离开输入框」与「AX 查询失败」",
   "releasedAt": "2026-11-25"
 }

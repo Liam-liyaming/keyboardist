@@ -145,16 +145,25 @@ final class Engine {
                 //   文本反而还在或变长     → 是插入，通常是输入法上屏，跳过
                 let ambiguous = lastLetterAt > 0 && CFAbsoluteTimeGetCurrent() - lastLetterAt < 1.5
                 if ambiguous {
-                    let before = meter.currentLength()
+                    let before = meter.probeLength()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
                         guard let self else { return }
-                        let after = self.meter.currentLength()
-                        let submitted = (after == nil) || (before != nil && after! < before!)
-                        if submitted {
-                            HaloOverlay.log("enter verified: submitted")
+                        let after = self.meter.probeLength()
+
+                        switch after {
+                        case .notTextTarget:
+                            HaloOverlay.log("enter verified: left the field")
                             self.onEnter?()
-                        } else {
-                            HaloOverlay.log("enter skipped: text inserted (likely IME commit)")
+                        case .length(let now):
+                            if case .length(let was) = before, now < was {
+                                HaloOverlay.log("enter verified: cleared")
+                                self.onEnter?()
+                            } else {
+                                HaloOverlay.log("enter skipped: text kept or grew (IME commit)")
+                            }
+                        case .failed:
+                            // 读不到不等于没提交，宁可少放一次也不误放
+                            HaloOverlay.log("enter skipped: probe failed")
                         }
                     }
                 } else {

@@ -144,21 +144,39 @@ final class TextMeter {
         return (isComposing(element), textFocused)
     }
 
-    /// 当前焦点控件的字符数；没有文本控件时返回 nil。
+    /// 探针结果：必须区分「不是文本控件」和「查询失败」——
+    /// 前者代表用户离开了输入框（= 提交），后者只是我们没读到（= 未知）。
+    enum LengthProbe {
+        case length(Int)
+        case notTextTarget
+        case failed
+    }
+
     /// 只取长度，不取内容。
-    func currentLength() -> Int? {
-        guard !KeyCapture.isSecureInputEnabled() else { return nil }
+    func probeLength() -> LengthProbe {
+        guard !KeyCapture.isSecureInputEnabled() else { return .notTextTarget }
 
         let system = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(system, 0.03)
 
         var focusedRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
+        let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedRef)
+        guard status == .success,
               let focusedRef,
               CFGetTypeID(focusedRef) == AXUIElementGetTypeID()
-        else { return nil }
+        else { return .notTextTarget }
 
-        return readLength(focusedRef as! AXUIElement)
+        let element = focusedRef as! AXUIElement
+
+        var roleRef: CFTypeRef?
+        var role = ""
+        if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
+           let roleRef, let value = roleRef as? String { role = value }
+        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
+        guard textRoles.contains(role) else { return .notTextTarget }
+
+        guard let length = readLength(element) else { return .failed }
+        return .length(length)
     }
 
     /// 此刻焦点控件是否处于输入法组合态（回车此时是「上屏」，不是「提交」）
