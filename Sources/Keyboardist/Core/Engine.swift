@@ -139,36 +139,33 @@ final class Engine {
             } else if !context.textFocused {
                 HaloOverlay.log("enter skipped: no text field")
             } else {
-                // 回车前一个键是字母 → 可能是输入法在确认英文，不能只看组合态。
-                // 延后 100ms 验证「这次回车有没有真的提交」：
-                //   输入框被清空 / 焦点离开 → 是提交，放光环
-                //   文本反而还在或变长     → 是插入，通常是输入法上屏，跳过
-                let ambiguous = lastLetterAt > 0 && CFAbsoluteTimeGetCurrent() - lastLetterAt < 1.5
-                if ambiguous {
-                    let before = meter.probeLength()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
-                        guard let self else { return }
-                        let after = self.meter.probeLength()
+                // 不靠时序猜，每次回车都验证「有没有真的提交」：
+                //   输入框变少 / 焦点离开 → 提交，放光环
+                //   文本没变 或 变长       → 插入（输入法上屏、换行）→ 跳过
+                //
+                // 早先版本用「回车前 1.5 秒内有没有打字母」来决定要不要验证，
+                // 结果同样是敲英文，打得快就跳过、停顿一下就直接放行——按时间分叉是错的。
+                let before = meter.probeLength()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
+                    guard let self else { return }
+                    let after = self.meter.probeLength()
+                    let beforeText = Engine.describe(before)
+                    let afterText = Engine.describe(after)
 
-                        switch after {
-                        case .notTextTarget:
-                            HaloOverlay.log("enter verified: left the field")
+                    switch after {
+                    case .notTextTarget:
+                        HaloOverlay.log("enter verified: left the field (before=\(beforeText))")
+                        self.onEnter?()
+                    case .length(let now):
+                        if case .length(let was) = before, now < was {
+                            HaloOverlay.log("enter verified: cleared \(beforeText) → \(afterText)")
                             self.onEnter?()
-                        case .length(let now):
-                            if case .length(let was) = before, now < was {
-                                HaloOverlay.log("enter verified: cleared")
-                                self.onEnter?()
-                            } else {
-                                HaloOverlay.log("enter skipped: text kept or grew (IME commit)")
-                            }
-                        case .failed:
-                            // 读不到不等于没提交，宁可少放一次也不误放
-                            HaloOverlay.log("enter skipped: probe failed")
+                        } else {
+                            HaloOverlay.log("enter skipped: text kept or grew \(beforeText) → \(afterText)")
                         }
-                    }
-                } else {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onEnter?()
+                    case .failed:
+                        // 读不到不等于没提交，宁可少放一次也不误放
+                        HaloOverlay.log("enter skipped: probe failed (before=\(beforeText))")
                     }
                 }
             }
@@ -237,6 +234,15 @@ final class Engine {
     }
 
     // MARK: - 工具
+
+    /// 日志用：把探针结果变成短字符串（只有长度，没有内容）
+    static func describe(_ probe: TextMeter.LengthProbe) -> String {
+        switch probe {
+        case .length(let n): return "len=\(n)"
+        case .notTextTarget: return "no-text"
+        case .failed: return "failed"
+        }
+    }
 
     /// 字母键位（a–z），用来判断「回车前是不是刚打完一串字母」
     static let letterKeyCodes: Set<Int64> = [

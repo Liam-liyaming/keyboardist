@@ -1,7 +1,7 @@
 {
-  "version": "0.4.14",
-  "build": 16,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.14.dmg",
-  "notes": "提交验证区分「离开输入框」与「AX 查询失败」",
+  "version": "0.4.15",
+  "build": 17,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.15.dmg",
+  "notes": "回车一律做提交验证，不再按时间分叉；日志带长度",
   "releasedAt": "2026-11-25"
 }
