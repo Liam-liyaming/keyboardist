@@ -13,6 +13,7 @@ final class MenuBarController: NSObject {
     private var appsRootItem: NSMenuItem!
     private var songItem: NSMenuItem!
     private var screenItem: NSMenuItem!
+    private let journal = JournalViewer()
     private var activeApp: String = "-"
     private var glowItem: NSMenuItem!
     private var pauseItem: NSMenuItem!
@@ -106,6 +107,15 @@ final class MenuBarController: NSObject {
         let update = NSMenuItem(title: "检查更新…", action: #selector(checkUpdates), keyEquivalent: "")
         update.target = self
         menu.addItem(update)
+
+        let journalItem = NSMenuItem(title: "记录输入内容", action: #selector(toggleJournal), keyEquivalent: "")
+        journalItem.target = self
+        journalItem.state = TextJournal.isEnabled ? .on : .off
+        menu.addItem(journalItem)
+
+        let viewJournal = NSMenuItem(title: "查看今日输入…", action: #selector(showJournal), keyEquivalent: "")
+        viewJournal.target = self
+        menu.addItem(viewJournal)
 
         menu.addItem(privacy)
 
@@ -293,6 +303,26 @@ final class MenuBarController: NSObject {
         if alert.runModal() == .alertFirstButtonReturn,
            let url = URL(string: remote.url) {
             NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func toggleJournal(_ sender: NSMenuItem) {
+        TextJournal.isEnabled.toggle()
+        sender.state = TextJournal.isEnabled ? .on : .off
+    }
+
+    @objc private func showJournal() {
+        journal.show()
+    }
+
+    @objc private func clearJournal() {
+        let alert = NSAlert()
+        alert.messageText = "清空今天的输入记录？"
+        alert.informativeText = "只删除本机今天这一天的加密记录，不可恢复。"
+        alert.addButton(withTitle: "清空")
+        alert.addButton(withTitle: "取消")
+        if alert.runModal() == .alertFirstButtonReturn {
+            TextJournal.clear(day: TextJournal.dayKey(Date()))
         }
     }
 

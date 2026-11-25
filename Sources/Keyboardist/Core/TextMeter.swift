@@ -18,10 +18,14 @@ final class TextMeter {
     var onText: ((Int, Int, pid_t) -> Void)?
     /// 最近是否有按键（排除终端滚屏、程序自己改文本这类非输入增长）
     var hadRecentKey: (() -> Bool)?
+    /// 新打出来的那段文字（只在这段增长时回调）
+    var onTextAppended: ((String, Int32) -> Void)?
 
     private var timer: Timer?
     private var baseline: Int = -1
     private var baselineElement: AXUIElement?
+    private var lastValue: String?
+    private var lastValueElement: AXUIElement?
     private var wasComposing = false
     private var kicked: Set<pid_t> = []
 
@@ -122,6 +126,18 @@ final class TextMeter {
                 return
             }
             onText?(delta, 0, pid)
+
+            // 顺手把「新增的那段文字」截出来，交给加密日记
+            if let value = readString(element), value.count <= 100_000 {
+                let sameValueElement = lastValueElement.map { CFEqual($0, element) } ?? false
+                let previous = sameValueElement ? (lastValue ?? "") : ""
+                lastValue = value
+                lastValueElement = element
+                if let appended = Self.appendedText(from: previous, to: value) {
+                    onTextAppended?(appended, pid)
+                }
+            }
+
             baseline = len
         } else if delta < 0 {
             if len == 0 {
@@ -171,6 +187,23 @@ final class TextMeter {
             return (appRef as! AXUIElement)
         }
         return nil
+    }
+
+    /// 新值相对旧值多出来的那段（公共前缀之后的部分）。
+    /// 只用于增量记录；如果旧值不是新值的前缀（比如整段被替换），返回 nil。
+    static func appendedText(from old: String, to new: String) -> String? {
+        guard !old.isEmpty else { return new }
+        guard new.count > old.count else { return nil }
+        guard new.hasPrefix(old) else { return nil }
+        return String(new.dropFirst(old.count))
+    }
+
+    /// 读控件的完整文本（只用于增量日记，长度有上限）
+    private func readString(_ element: AXUIElement) -> String? {
+        var ref: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &ref) == .success,
+              let ref, let value = ref as? String else { return nil }
+        return value
     }
 
     /// 是不是「可以打字的控件」。多重判定：角色白名单 → 可编辑属性 → 角色名含 Text。

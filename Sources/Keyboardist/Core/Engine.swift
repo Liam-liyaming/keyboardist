@@ -62,6 +62,10 @@ final class Engine {
             guard let self else { return false }
             return CFAbsoluteTimeGetCurrent() - self.lastKeyAt < 0.6
         }
+        meter.onTextAppended = { text, _ in
+            let app = ActiveWindow.frontmostApp()?.name ?? "?"
+            TextJournal.append(text, app: app)
+        }
         meter.onText = { [weak self] added, removed, pid in
             self?.handleText(added: added, removed: removed, pid: pid)
         }

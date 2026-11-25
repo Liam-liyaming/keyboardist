@@ -49,6 +49,7 @@ if [ "${SKIP_DMG:-0}" != "1" ]; then
     echo "→ DMG: $DMG"
 fi
 
+if [ "${SKIP_DMG:-0}" != "1" ]; then
 # 更新通道：DMG 进 releases/，appcast.json 给「检查更新」用
 mkdir -p "$ROOT/releases"
 cp "$DMG" "$ROOT/releases/keyboardist-$VERSION.dmg"
@@ -65,6 +66,7 @@ cat > "$ROOT/appcast.json" <<JSON
 }
 JSON
 echo "→ appcast.json: $VERSION"
+fi
 
 # 代码与二进制对齐
 cd "$ROOT"
