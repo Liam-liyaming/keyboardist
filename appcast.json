@@ -1,7 +1,7 @@
 {
-  "version": "0.4.20",
-  "build": 22,
-  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.20.dmg",
-  "notes": "回车只在输入框被清空时触发（拼音上屏不变短也会被误判）",
+  "version": "0.4.21",
+  "build": 23,
+  "url": "https://raw.githubusercontent.com/Liam-liyaming/keyboardist/main/releases/keyboardist-0.4.21.dmg",
+  "notes": "回车后最多观察 400ms 直到输入框清空",
   "releasedAt": "2026-11-25"
 }

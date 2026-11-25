@@ -155,39 +155,18 @@ final class Engine {
                 // 也不再有「回车前不是字母就立即放」的快速路径：
                 // 那条路绕过了验证，是输入法确认被误触发的入口。
                 let before = meter.probeLength()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
-                    guard let self else { return }
-                    let after = self.meter.probeLength()
-                    let beforeText = Engine.describe(before)
-                    let afterText = Engine.describe(after)
-
-                    switch after {
-                    case .notTextTarget:
-                        HaloOverlay.log("enter verified: left the field (before=\(beforeText))  \(tag)")
-                        self.onEnter?()
-                    case .length(let now):
-                        if now == 0, case .length(let was) = before, was > 0 {
-                            HaloOverlay.log("enter verified: emptied \(beforeText) → 0  \(tag)")
-                            self.onEnter?()
-                        } else {
-                            // 有些输入框清空得慢（React 异步更新），再等一次。
-                            // 输入法上屏永远等不到 0，所以这条兜底不会让它误触发。
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { [weak self] in
-                                guard let self else { return }
-                                let later = self.meter.probeLength()
-                                if case .length(0) = later {
-                                    HaloOverlay.log("enter verified: emptied slowly \(beforeText) → 0  \(tag)")
-                                    self.onEnter?()
-                                } else {
-                                    HaloOverlay.log("enter skipped: not emptied \(beforeText) → \(afterText) → \(Engine.describe(later))  \(tag)")
-                                }
-                            }
-                        }
-                    case .failed:
-                        // 读不到不等于没提交，宁可少放一次也不误放
-                        HaloOverlay.log("enter skipped: probe failed (before=\(beforeText))  \(tag)")
-                    }
-                }
+                let probeTimes: [Double] = [0.06, 0.20, 0.40]   // 依次观察，越慢的 App 也能等到清空
+                Engine.watchForEmpty(meter: meter,
+                                     before: before,
+                                     times: probeTimes,
+                                     tag: tag,
+                                     onSubmitted: { [weak self] how in
+                                         HaloOverlay.log("enter verified: \(how)  \(tag)")
+                                         self?.onEnter?()
+                                     },
+                                     onSkipped: { trail in
+                                         HaloOverlay.log("enter skipped: not emptied \(trail)  \(tag)")
+                                     })
             }
         }
     }
@@ -254,6 +233,44 @@ final class Engine {
     }
 
     // MARK: - 工具
+
+
+    /// 回车后依次观察输入框，直到它被清空（= 提交）。
+    /// 拼音上屏永远不会变成 0，所以它不会误触发。
+    static func watchForEmpty(meter: TextMeter,
+                              before: TextMeter.LengthProbe,
+                              times: [Double],
+                              tag: String,
+                              onSubmitted: @escaping (String) -> Void,
+                              onSkipped: @escaping (String) -> Void) {
+        let beforeText = describe(before)
+        var trail: [String] = [beforeText]
+
+        func step(_ index: Int) {
+            guard index < times.count else {
+                onSkipped(trail.joined(separator: " → "))
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + times[index]) {
+                let probe = meter.probeLength()
+                trail.append(describe(probe))
+
+                switch probe {
+                case .notTextTarget:
+                    onSubmitted("left the field (" + trail.joined(separator: " → ") + ")")
+                case .length(0):
+                    if case .length(let was) = before, was > 0 {
+                        onSubmitted("emptied (" + trail.joined(separator: " → ") + ")")
+                    } else {
+                        onSkipped(trail.joined(separator: " → "))
+                    }
+                case .length, .failed:
+                    step(index + 1)
+                }
+            }
+        }
+        step(0)
+    }
 
     /// 日志用：把探针结果变成短字符串（只有长度，没有内容）
     static func describe(_ probe: TextMeter.LengthProbe) -> String {
